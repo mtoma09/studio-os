@@ -193,7 +193,7 @@ export default function DashboardPage() {
                   className={`relative flex items-center justify-center w-8 h-8 border rounded-lg transition-colors ${
                     filterStatus !== 'All Statuses' ? 'border-foreground/30 bg-card text-foreground' : 'border-border/60 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-card'
                   }`}>
-                  <span className="material-icons-outlined" style={{ fontSize: 17 }}>list_arrow</span>
+                  <span className="material-icons-outlined" style={{ fontSize: 17 }}>swap_vert</span>
                   {filterStatus !== 'All Statuses' && <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-foreground" />}
                 </button>
                 {showSortMenu && (
