@@ -1,0 +1,194 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+
+@layer base {
+  :root {
+    --background: 40 5% 90%;
+    --foreground: 0 0% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 20%;
+    --primary: 0 0% 20%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 20%;
+    --muted: 0 0% 93%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 93%;
+    --accent-foreground: 0 0% 20%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 85%;
+    --input: 0 0% 88%;
+    --ring: 0 0% 20%;
+    --radius: 6px;
+  }
+
+  .dark {
+    --background: 0 0% 10%;
+    --foreground: 0 0% 93%;
+    --card: 0 0% 13%;
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 13%;
+    --popover-foreground: 0 0% 93%;
+    --primary: 0 0% 93%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 93%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 58%;
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 93%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 22%;
+    --input: 0 0% 22%;
+    --ring: 0 0% 80%;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #333333;
+  }
+
+  .material-icons-outlined,
+  .material-icons {
+    font-family: 'Material Icons Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 18px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    vertical-align: middle;
+  }
+}
+
+@layer components {
+  /* ── Sidebar ── */
+  .sidebar-item {
+    @apply flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition-all duration-150;
+  }
+  .sidebar-item-active {
+    background: rgba(255,255,255,0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    @apply text-foreground font-medium;
+  }
+  .sidebar-item-hover:hover {
+    background: rgba(255,255,255,0.25);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    @apply text-foreground;
+  }
+  .nav-icon { @apply text-foreground/60; }
+  .nav-label { @apply text-foreground/70; }
+  .sidebar-item-active .nav-icon,
+  .sidebar-item-active .nav-label { @apply text-foreground; }
+  .sidebar-item-hover:hover .nav-icon,
+  .sidebar-item-hover:hover .nav-label { @apply text-foreground; }
+
+  /* ── Table ── */
+  .table-header {
+    @apply px-4 py-2.5 text-xs font-medium text-muted-foreground uppercase tracking-wider;
+  }
+  .table-cell { @apply px-4 py-3 text-sm; }
+
+  /* ── Buttons ── */
+  .notion-button {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg hover:bg-muted transition-colors;
+  }
+  .btn-primary {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-foreground text-background hover:bg-foreground/90 transition-colors font-medium;
+  }
+
+  /* ── Cards ── */
+  .card-base {
+    @apply bg-card border border-border rounded-xl;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .card-hover {
+    @apply transition-all duration-150;
+  }
+  .card-hover:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);
+  }
+  .kpi-card {
+    @apply bg-card border border-border rounded-xl p-5;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.05);
+  }
+  .project-card {
+    @apply bg-card border border-border rounded-xl overflow-hidden cursor-pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 2px 8px rgba(0,0,0,0.05);
+    @apply transition-all duration-150;
+  }
+  .project-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);
+    @apply border-muted-foreground/30;
+  }
+
+  /* ── Status dot ── */
+  .status-dot { @apply w-1.5 h-1.5 rounded-full flex-shrink-0; }
+
+  /* ── Form inputs ── */
+  .modal-input {
+    @apply w-full px-3 py-2 bg-muted rounded-lg border border-transparent text-sm outline-none focus:border-border transition-colors;
+  }
+
+  /* ── Scrollbars ── */
+  .modal-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.15) transparent;
+  }
+  .modal-scroll::-webkit-scrollbar { width: 5px; }
+  .modal-scroll::-webkit-scrollbar-track { background: transparent; }
+  .modal-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.15);
+    border-radius: 3px;
+  }
+  .modal-scroll::-webkit-scrollbar-thumb:hover { background-color: rgba(0,0,0,0.25); }
+  .dark .modal-scroll::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.15); }
+
+  .dropdown-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-radius: inherit;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,0,0,0.12) transparent;
+  }
+  .dropdown-scroll::-webkit-scrollbar { width: 4px; }
+  .dropdown-scroll::-webkit-scrollbar-track { background: transparent; }
+  .dropdown-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.12);
+    border-radius: 2px;
+  }
+  .dark .dropdown-scroll::-webkit-scrollbar-thumb { background-color: rgba(255,255,255,0.12); }
+
+  /* ── Filter dropdown list item ── */
+  .filter-item {
+    @apply flex items-center justify-between w-full px-3 py-1.5 text-sm rounded-lg transition-colors text-left;
+  }
+  .filter-item-active { @apply font-medium text-foreground bg-white/60; }
+  .filter-item-inactive { @apply text-muted-foreground hover:text-foreground hover:bg-white/40; }
+
+  /* ── Theme toggle track ── */
+  html { color-scheme: light; }
+  html.dark { color-scheme: dark; }
+}
