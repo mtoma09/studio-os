@@ -164,7 +164,7 @@ export default function TasksPage() {
                   className={`py-2 text-xs rounded-lg border transition-colors ${editingTask.status === s ? 'border-foreground bg-muted font-medium' : 'border-border text-muted-foreground hover:bg-muted/30'}`}>{s}</button>
               ))}</div></div>
             <div><label className="block text-xs text-muted-foreground mb-1.5">Due Date</label>
-              <input value={editingTask.due} onChange={e => setEditingTask(p => p && ({ ...p, due: e.target.value }))} className="modal-input" /></div>
+              <input type="date" value={editingTask.due} onChange={e => setEditingTask(p => p && ({ ...p, due: e.target.value }))} className="modal-input" /></div>
           </div>
         </SidePanel>
       )}

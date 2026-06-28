@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { mockClients, formatBudget } from '@/lib/crm-data';
 import { ClientStatusBadge } from '@/components/crm/StatusBadge';
@@ -20,7 +21,10 @@ interface Props {
 
 export default function ClientDetailPage({ params }: Props) {
   const { id } = params;
-  const client = mockClients.find((c) => c.id === id);
+  const [clients, setClients] = useState(mockClients);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const client = clients.find((c) => c.id === id);
 
   if (!client) {
     return (
@@ -48,15 +52,11 @@ export default function ClientDetailPage({ params }: Props) {
         </div>
 
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button className="notion-button border border-border text-sm">
-            <span className="material-icons-outlined" style={{ fontSize: 16 }}>archive</span>
-            Archive
-          </button>
-          <button className="notion-button border border-border text-sm">
+          <button onClick={() => setShowEdit(true)} className="notion-button border border-border text-sm">
             <span className="material-icons-outlined" style={{ fontSize: 16 }}>edit</span>
             Edit
           </button>
-          <button className="notion-button border border-border text-sm">
+          <button onClick={() => setShowDelete(true)} className="notion-button border border-border text-sm">
             <span className="material-icons-outlined" style={{ fontSize: 16 }}>delete_outline</span>
             Delete
           </button>
@@ -188,6 +188,48 @@ export default function ClientDetailPage({ params }: Props) {
           </DetailSection>
         </div>
       </div>
+
+      {showEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/20" onClick={() => setShowEdit(false)} />
+          <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden">
+            <div className="px-6 py-5">
+              <h3 className="font-semibold mb-4">Edit Client</h3>
+              <div className="space-y-3">
+                <div><label className="block text-xs text-muted-foreground mb-1.5">Name</label><input className="modal-input" defaultValue={client.primaryContact} /></div>
+                <div><label className="block text-xs text-muted-foreground mb-1.5">Company</label><input className="modal-input" defaultValue={client.company} /></div>
+                <div><label className="block text-xs text-muted-foreground mb-1.5">Email</label><input className="modal-input" defaultValue={client.email} /></div>
+                <div><label className="block text-xs text-muted-foreground mb-1.5">Phone</label><input className="modal-input" defaultValue={client.phone} /></div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/20">
+              <button onClick={() => setShowEdit(false)} className="notion-button border border-border text-sm">Cancel</button>
+              <button onClick={() => setShowEdit(false)} className="notion-button bg-foreground text-background hover:bg-foreground/90 text-sm">Save</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/20" onClick={() => setShowDelete(false)} />
+          <div className="relative bg-card border border-border rounded-2xl shadow-xl w-full max-w-sm mx-4 overflow-hidden">
+            <div className="px-6 py-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
+                  <span className="material-icons-outlined text-red-600" style={{ fontSize: 20 }}>delete_outline</span>
+                </div>
+                <h3 className="font-semibold">Delete Client</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">Are you sure you want to delete <span className="font-medium text-foreground">{client.primaryContact}</span>? This action cannot be undone.</p>
+            </div>
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/20">
+              <button onClick={() => setShowDelete(false)} className="notion-button border border-border text-sm">Cancel</button>
+              <button onClick={() => { setClients(prev => prev.filter(c => c.id !== id)); setShowDelete(false); }} className="notion-button bg-red-600 text-white hover:bg-red-700 text-sm">Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

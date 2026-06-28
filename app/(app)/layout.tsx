@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { DesignerProvider } from '@/lib/designer-context';
 import { NotificationProvider } from '@/lib/notification-context';
+import { SettingsProvider } from '@/lib/settings-context';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { UserMenu } from '@/components/UserMenu';
 import { mockProjects } from '@/lib/projects-data';
@@ -28,25 +29,27 @@ function ThemeToggle() {
       }`}
     >
       <span
-        className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-card flex items-center justify-center shadow-sm transition-transform duration-300 ${
-          isDark ? 'translate-x-[18px]' : 'translate-x-0'
+        className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white dark:bg-black shadow transition-transform duration-300 ${
+          isDark ? 'translate-x-5' : 'translate-x-0'
         }`}
       >
-        <span className="material-icons-outlined text-foreground/80" style={{ fontSize: 11 }}>
-          {isDark ? 'dark_mode' : 'light_mode'}
+        <span className="absolute inset-0 flex items-center justify-center">
+          {isDark ? (
+            <span className="material-icons-outlined text-[11px] text-black">dark_mode</span>
+          ) : (
+            <span className="material-icons-outlined text-[11px] text-black">light_mode</span>
+          )}
         </span>
       </span>
     </button>
   );
 }
 
-// ── Nav items ─────────────────────────────────────────────────────────────────
+// ── Navigation Data ──────────────────────────────────────────────────────────
 const topNav = [
-  { href: '/dashboard', iconFilled: 'dashboard', iconOutlined: 'dashboard', label: 'Dashboard' },
-  { href: '/projects', iconFilled: 'folder', iconOutlined: 'folder_open', label: 'Projects' },
-];
-const crmChildren = [
-  { href: '/crm/leads', icon: 'person_add', label: 'Leads' },
+  { href: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
+  { href: '/projects', icon: 'folder', label: 'Projects' },
+  { href: '/crm/leads', icon: 'diversity_3', label: 'Leads' },
   { href: '/crm/clients', icon: 'people', label: 'Clients' },
 ];
 const bottomNav = [
@@ -56,7 +59,7 @@ const bottomNav = [
   { href: '/libraries', icon: 'library_books', label: 'Libraries' },
 ];
 
-// ── Hardcoded vendor + task search data ──────────────────────────────────────
+// ── Hardcoded search data ───────────────────────────────────────────────────
 const hardcodedVendors = [
   { label: 'Luxury Lighting Co.', sub: 'Lighting', href: '/procurement' },
   { label: 'Artisan Furniture Co.', sub: 'Furniture', href: '/procurement' },
@@ -73,6 +76,24 @@ const hardcodedTasks = [
   { label: 'Site Measure', sub: 'Vaucluse House', href: '/tasks' },
   { label: 'Client Brief Sign-Off', sub: 'Mosman Terrace', href: '/tasks' },
   { label: 'FF&E Schedule Draft', sub: 'Rose Bay Villa', href: '/tasks' },
+];
+const hardcodedInvoices = [
+  { label: 'INV-001', sub: 'Hampton Residence', href: '/finance' },
+  { label: 'INV-002', sub: 'Vaucluse House', href: '/finance' },
+  { label: 'INV-003', sub: 'Darling Point Apartment', href: '/finance' },
+  { label: 'INV-004', sub: 'Mosman Terrace', href: '/finance' },
+];
+const hardcodedSchedules = [
+  { label: 'Hampton FF&E Schedule', sub: 'Hampton Residence', href: '/projects/1' },
+  { label: 'Vaucluse Finishes', sub: 'Vaucluse House', href: '/projects/2' },
+  { label: 'Darling Point Furniture', sub: 'Darling Point Apartment', href: '/projects/3' },
+  { label: 'Mosman Lighting', sub: 'Mosman Terrace', href: '/projects/4' },
+];
+const hardcodedProducts = [
+  { label: 'Bocci 14 Series Pendant', sub: 'Lighting', href: '/procurement' },
+  { label: 'B&B Italia Camaleonda', sub: 'Furniture', href: '/procurement' },
+  { label: 'Dornbracht Tara Tapware', sub: 'Hardware', href: '/procurement' },
+  { label: 'Mutina Rombini Tile', sub: 'Finishes', href: '/procurement' },
 ];
 
 type SearchResult = { type: string; label: string; sub?: string; href: string };
@@ -122,12 +143,30 @@ function GlobalSearch() {
       .slice(0, 3)
       .map(t => ({ type: 'Tasks', ...t }));
 
+    const invoices = hardcodedInvoices
+      .filter(i => i.label.toLowerCase().includes(q) || i.sub.toLowerCase().includes(q))
+      .slice(0, 3)
+      .map(i => ({ type: 'Invoices', ...i }));
+
+    const schedules = hardcodedSchedules
+      .filter(s => s.label.toLowerCase().includes(q) || s.sub.toLowerCase().includes(q))
+      .slice(0, 3)
+      .map(s => ({ type: 'Schedules', ...s }));
+
+    const products = hardcodedProducts
+      .filter(p => p.label.toLowerCase().includes(q) || p.sub.toLowerCase().includes(q))
+      .slice(0, 3)
+      .map(p => ({ type: 'Products', ...p }));
+
     const grouped: { group: string; items: SearchResult[] }[] = [];
     if (projects.length) grouped.push({ group: 'Projects', items: projects });
     if (clients.length) grouped.push({ group: 'Clients', items: clients });
     if (leads.length) grouped.push({ group: 'Leads', items: leads });
     if (vendors.length) grouped.push({ group: 'Vendors', items: vendors });
     if (tasks.length) grouped.push({ group: 'Tasks', items: tasks });
+    if (invoices.length) grouped.push({ group: 'Invoices', items: invoices });
+    if (schedules.length) grouped.push({ group: 'Schedules', items: schedules });
+    if (products.length) grouped.push({ group: 'Products', items: products });
     return grouped;
   }, [query]);
 
@@ -186,100 +225,83 @@ function GlobalSearch() {
   );
 }
 
-// ── Main Layout ───────────────────────────────────────────────────────────────
-function AppLayoutInner({ children }: { children: ReactNode }) {
+// ── Sidebar Nav Item ─────────────────────────────────────────────────────────
+function NavItem({ href, icon, label }: { href: string; icon: string; label: string }) {
   const pathname = usePathname();
-
-  function isActive(href: string) {
-    if (href === '/dashboard') return pathname === '/dashboard';
-    return pathname.startsWith(href);
-  }
-
-  function NavItem({ href, icon, label }: { href: string; icon: string; label: string }) {
-    const active = isActive(href);
-    return (
-      <Link href={href}
-        className={`sidebar-item ${active ? 'sidebar-item-active' : 'sidebar-item-hover text-muted-foreground'}`}>
-        <span className={`${active ? 'material-icons' : 'material-icons-outlined'} nav-icon`} style={{ fontSize: 17 }}>{icon}</span>
-        <span className="nav-label text-[13px]">{label}</span>
-      </Link>
-    );
-  }
-
+  const active = pathname === href || pathname?.startsWith(href + '/');
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar — transparent background */}
-      <aside className="w-52 flex-shrink-0 flex flex-col">
-        {/* Logo — no border beneath */}
-        <div className="px-3 pt-3 pb-2 flex-shrink-0">
-          <Link href="/dashboard">
-            <Image src="/logo.png" alt="StudioOS" width={175} height={76}
-              style={{ width: 140, height: 'auto' }} priority />
-          </Link>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 px-2 py-1 space-y-0.5 overflow-y-auto">
-          {topNav.map((item) => (
-            <NavItem key={item.href} href={item.href} icon={isActive(item.href) ? item.iconFilled : item.iconOutlined} label={item.label} />
-          ))}
-
-          {/* CRM heading */}
-          <div className="pt-4 pb-0.5 px-2.5 flex items-center gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#333333' }}>CRM</span>
-          </div>
-          <div className="flex items-start gap-0 pl-3">
-            <div className="flex flex-col flex-1 space-y-0.5">
-              {crmChildren.map((child) => {
-                const active = isActive(child.href);
-                return (
-                  <Link key={child.href} href={child.href}
-                    className={`sidebar-item pl-2 ${active ? 'sidebar-item-active' : 'sidebar-item-hover text-muted-foreground'}`}>
-                    <span className={`${active ? 'material-icons' : 'material-icons-outlined'} nav-icon`} style={{ fontSize: 15 }}>{child.icon}</span>
-                    <span className="nav-label text-[13px]">{child.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Divider */}
-          {/* <div className="h-px bg-border/50 mx-2 my-1.5" /> */}
-
-          {/* Bottom nav */}
-          {bottomNav.map((item) => (
-            <NavItem key={item.href} href={item.href} icon={item.icon} label={item.label} />
-          ))}
-        </nav>
-      </aside>
-
-      {/* Main */}
-      <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header — transparent, no border */}
-        <header className="h-14 flex-shrink-0 sticky top-0 z-10 px-4 flex items-center justify-end gap-2.5">
-          <GlobalSearch />
-          <ThemeToggle />
-          <NotificationCenter />
-          <UserMenu />
-        </header>
-
-        {/* Content */}
-        <div className="flex-1 overflow-auto">
-          <div className="px-6 pb-6 pt-4">
-            {children}
-          </div>
-        </div>
-      </main>
-    </div>
+    <Link
+      href={href}
+      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors group ${
+        active ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+      }`}
+    >
+      <span className={`material-icons-outlined ${active ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'} transition-colors`} style={{ fontSize: 18 }}>
+        {icon}
+      </span>
+      <span className="flex-1">{label}</span>
+    </Link>
   );
 }
 
+// ── Layout ───────────────────────────────────────────────────────────────────
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <DesignerProvider>
-      <NotificationProvider>
-        <AppLayoutInner>{children}</AppLayoutInner>
-      </NotificationProvider>
-    </DesignerProvider>
+    <NotificationProvider>
+      <DesignerProvider>
+        <div className="flex min-h-screen bg-[var(--bg)]">
+          {/* Sidebar */}
+          <aside className="w-64 bg-[var(--bg)] border-r border-border flex flex-col fixed inset-y-0 left-0 z-40">
+            <div className="flex items-center gap-2 px-4 h-16 flex-shrink-0">
+              <Image src="/logo.png" alt="Studio" width={28} height={28} className="object-contain" priority />
+              <span className="font-semibold text-sm tracking-tight">Studio Manager</span>
+            </div>
+
+            <nav className="flex-1 px-3 py-2 space-y-1">
+              {topNav.map((item) => (
+                <NavItem key={item.href} {...item} />
+              ))}
+              <div className="py-2 px-3">
+                <div className="h-px bg-border" />
+              </div>
+              {bottomNav.map((item) => (
+                <NavItem key={item.href} {...item} />
+              ))}
+            </nav>
+
+            <div className="px-4 py-3 border-t border-border flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <ThemeToggle />
+                <Link href="/settings" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <span className="material-icons-outlined" style={{ fontSize: 18 }}>settings</span>
+                  Settings
+                </Link>
+              </div>
+            </div>
+          </aside>
+
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col ml-64">
+            {/* Top Bar */}
+            <header className="sticky top-0 z-30 bg-[var(--bg)]/80 backdrop-blur-md border-b border-border h-16 flex items-center justify-between px-6">
+              <div className="flex items-center gap-3">
+                <span className="material-icons-outlined text-muted-foreground" style={{ fontSize: 14 }}>navigate_before</span>
+                <span className="text-sm text-muted-foreground">{usePathname()?.split('/').filter(Boolean).slice(0, -1).join(' / ') || 'Dashboard'}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <GlobalSearch />
+                <NotificationCenter />
+                <UserMenu />
+              </div>
+            </header>
+
+            {/* Page Content */}
+            <main className="flex-1 px-6 py-6">
+              {children}
+            </main>
+          </div>
+        </div>
+      </DesignerProvider>
+    </NotificationProvider>
   );
 }
