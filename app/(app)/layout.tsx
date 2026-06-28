@@ -23,16 +23,16 @@ function ThemeToggle() {
     <button
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className={`relative w-12 h-6 rounded-full transition-colors duration-300 focus:outline-none ${
-        isDark ? 'bg-foreground/30' : 'bg-foreground/15'
+      className={`relative w-11 h-6 rounded-full transition-colors duration-300 focus:outline-none border border-border/50 ${
+        isDark ? 'bg-foreground/20' : 'bg-muted/60'
       }`}
     >
       <span
         className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-card flex items-center justify-center shadow-sm transition-transform duration-300 ${
-          isDark ? 'translate-x-6' : 'translate-x-0'
+          isDark ? 'translate-x-[18px]' : 'translate-x-0'
         }`}
       >
-        <span className="material-icons-outlined text-foreground" style={{ fontSize: 12 }}>
+        <span className="material-icons-outlined text-foreground/80" style={{ fontSize: 11 }}>
           {isDark ? 'dark_mode' : 'light_mode'}
         </span>
       </span>
@@ -53,7 +53,7 @@ const bottomNav = [
   { href: '/procurement', icon: 'store', label: 'Vendor Library' },
   { href: '/tasks', icon: 'task_alt', label: 'Tasks' },
   { href: '/finance', icon: 'receipt_long', label: 'Finance' },
-  { href: '/settings', icon: 'settings', label: 'Settings' },
+  { href: '/libraries', icon: 'library_books', label: 'Libraries' },
 ];
 
 // ── Hardcoded vendor + task search data ──────────────────────────────────────
@@ -244,7 +244,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
           </div>
 
           {/* Divider */}
-          <div className="h-px bg-border/50 mx-2 my-1.5" />
+          {/* <div className="h-px bg-border/50 mx-2 my-1.5" /> */}
 
           {/* Bottom nav */}
           {bottomNav.map((item) => (

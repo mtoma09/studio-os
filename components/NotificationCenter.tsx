@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNotifications, Notification } from '@/lib/notification-context';
 
 export function NotificationCenter() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAsUnread, markAllAsRead } = useNotifications();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'all' | 'unread'>('all');
   const ref = useRef<HTMLDivElement>(null);
@@ -23,7 +23,6 @@ export function NotificationCenter() {
     };
   }, []);
 
-  // "All" tab shows everything; "unread" shows only those with read=false
   const displayed = tab === 'unread'
     ? notifications.filter((n) => !n.read)
     : notifications;
@@ -32,7 +31,7 @@ export function NotificationCenter() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="relative w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/30 transition-colors"
+        className="relative w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted/60 transition-colors"
         title="Notifications"
       >
         <span
@@ -79,7 +78,7 @@ export function NotificationCenter() {
               </p>
             ) : (
               displayed.map((n) => (
-                <NotificationItem key={n.id} notification={n} onMarkRead={() => markAsRead(n.id)} />
+                <NotificationItem key={n.id} notification={n} onMarkRead={() => markAsRead(n.id)} onMarkUnread={() => markAsUnread(n.id)} />
               ))
             )}
           </div>
@@ -89,7 +88,7 @@ export function NotificationCenter() {
   );
 }
 
-function NotificationItem({ notification, onMarkRead }: { notification: Notification; onMarkRead: () => void }) {
+function NotificationItem({ notification, onMarkRead, onMarkUnread }: { notification: Notification; onMarkRead: () => void; onMarkUnread: () => void }) {
   return (
     <div className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/40 transition-colors border-b border-border/40 last:border-b-0 ${!notification.read ? 'bg-muted/10' : ''}`}>
       {/* Unread dot */}
@@ -109,14 +108,13 @@ function NotificationItem({ notification, onMarkRead }: { notification: Notifica
         <p className="text-xs text-muted-foreground/60 mt-1">{notification.time}</p>
       </div>
 
-      {/* Mark as read button — always visible, icon + text */}
+      {/* Mark as read/unread button */}
       <button
-        onClick={(e) => { e.stopPropagation(); onMarkRead(); }}
-        title="Mark as read"
+        onClick={(e) => { e.stopPropagation(); notification.read ? onMarkUnread() : onMarkRead(); }}
         className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 mt-0.5 whitespace-nowrap"
       >
         <span className="material-icons-outlined" style={{ fontSize: 13 }}>done_all</span>
-        <span>Mark as read</span>
+        <span>{notification.read ? 'Mark unread' : 'Mark read'}</span>
       </button>
     </div>
   );
