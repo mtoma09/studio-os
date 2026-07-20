@@ -40,7 +40,7 @@ const PHASE_BAR_COLORS = [
   { bar: 'bg-foreground/10', text: 'text-foreground/70', fill: 'bg-foreground/25', dot: 'bg-foreground/35' },
 ];
 
-const STICKY_W = 288;
+const STICKY_W = 320;
 const DAY_W = 14;
 const WEEK_W = DAY_W * 7;
 const ROW_H = 56;
@@ -61,10 +61,8 @@ function PhaseMenu({ phase, isFirst, isLast, canReorder, onEdit, onDelete, onMov
   const [rect, setRect] = useState<DOMRect | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (btnRef.current && !btnRef.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', h);
     document.addEventListener('scroll', () => setOpen(false), true);
-    return () => { document.removeEventListener('mousedown', h); document.removeEventListener('scroll', () => setOpen(false), true); };
+    return () => { document.removeEventListener('scroll', () => setOpen(false), true); };
   }, []);
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -213,53 +211,59 @@ function AddPhasePanel({ onClose, onSave }: AddPhasePanelProps) {
     <SidePanel
       subtitle="Define a new timeline phase"
       onClose={onClose}
-      width="min(40vw, 520px)"
       footer={
         <>
           <div />
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button onClick={onClose} className="notion-button border border-border">Cancel</button>
-            <button onClick={handleSave} disabled={!canSave} className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed">
+            <button onClick={handleSave} disabled={!canSave} className="notion-button bg-foreground text-background hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed">
               Add Phase
             </button>
           </div>
         </>
       }
     >
-      <div className="px-6 py-5 space-y-4">
+      <div className="px-6 py-5 space-y-6">
+        {/* Phase Details */}
         <div>
-          <label className="block text-xs text-muted-foreground mb-1.5">Phase Name *</label>
-          <SelectDropdown
-            value={name}
-            options={PROJECT_PHASES}
-            onChange={setName}
-            placeholder="Select a phase"
-          />
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Phase Details</p>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1.5">Phase Name <span className="text-red-400 ml-0.5">*</span></label>
+              <SelectDropdown
+                value={name}
+                options={PROJECT_PHASES}
+                onChange={setName}
+                placeholder="Select a phase"
+              />
+            </div>
+          </div>
         </div>
+
+        {/* Timeframe */}
         <div>
-          <label className="block text-xs text-muted-foreground mb-1.5">Timeframe *</label>
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <label className="block text-[10px] text-muted-foreground mb-1">Start date</label>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Timeframe</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1.5">Start Date <span className="text-red-400 ml-0.5">*</span></label>
               <DateDropdown value={start} onChange={setStart} label="Start date" />
             </div>
-            <div className="flex-shrink-0 mt-4 text-muted-foreground text-sm">→</div>
-            <div className="flex-1">
-              <label className="block text-[10px] text-muted-foreground mb-1">End date</label>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1.5">End Date <span className="text-red-400 ml-0.5">*</span></label>
               <DateDropdown value={end} onChange={setEnd} label="End date" />
             </div>
           </div>
           {start && end && end < start && (
             <p className="text-xs text-red-500 mt-1">End date must be after start date</p>
           )}
+          {start && end && end >= start && (
+            <div className="p-3 bg-muted/30 rounded-lg mt-3">
+              <p className="text-xs text-muted-foreground">
+                Duration: <span className="text-foreground font-medium">{daysBetween(parseDate(start), parseDate(end))} days</span>
+              </p>
+            </div>
+          )}
         </div>
-        {start && end && end >= start && (
-          <div className="p-3 bg-muted/30 rounded-lg">
-            <p className="text-xs text-muted-foreground">
-              Duration: <span className="text-foreground font-medium">{daysBetween(parseDate(start), parseDate(end))} days</span>
-            </p>
-          </div>
-        )}
       </div>
     </SidePanel>
   );
@@ -282,34 +286,38 @@ function EditPhasePanel({ phase, onClose, onSave }: EditPhasePanelProps) {
     <SidePanel
       subtitle={phase.name}
       onClose={onClose}
-      width="min(40vw, 520px)"
       footer={
         <>
           <div />
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button onClick={onClose} className="notion-button border border-border">Cancel</button>
-            <button onClick={() => canSave && onSave({ ...phase, name: name.trim(), start, end })} disabled={!canSave} className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed">
+            <button onClick={() => canSave && onSave({ ...phase, name: name.trim(), start, end })} disabled={!canSave} className="notion-button bg-foreground text-background hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed">
               Save Changes
             </button>
           </div>
         </>
       }
     >
-      <div className="px-6 py-5 space-y-4">
+      <div className="px-6 py-5 space-y-6">
+        {/* Phase Details */}
         <div>
-          <label className="block text-xs text-muted-foreground mb-1.5">Phase Name *</label>
-          <SelectDropdown value={name} options={PROJECT_PHASES} onChange={setName} />
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Phase Details</p>
+          <div>
+            <label className="block text-xs text-muted-foreground mb-1.5">Phase Name <span className="text-red-400 ml-0.5">*</span></label>
+            <SelectDropdown value={name} options={PROJECT_PHASES} onChange={setName} />
+          </div>
         </div>
+
+        {/* Timeframe */}
         <div>
-          <label className="block text-xs text-muted-foreground mb-1.5">Timeframe *</label>
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <label className="block text-[10px] text-muted-foreground mb-1">Start date</label>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Timeframe</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1.5">Start Date <span className="text-red-400 ml-0.5">*</span></label>
               <DateDropdown value={start} onChange={setStart} label="Start date" />
             </div>
-            <div className="flex-shrink-0 mt-4 text-muted-foreground text-sm">→</div>
-            <div className="flex-1">
-              <label className="block text-[10px] text-muted-foreground mb-1">End date</label>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1.5">End Date <span className="text-red-400 ml-0.5">*</span></label>
               <DateDropdown value={end} onChange={setEnd} label="End date" />
             </div>
           </div>

@@ -35,10 +35,8 @@ function TaskMenu({ task, onEdit, onDelete }: TaskMenuProps) {
   const [rect, setRect] = useState<DOMRect | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (btnRef.current && !btnRef.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', h);
     document.addEventListener('scroll', () => setOpen(false), true);
-    return () => { document.removeEventListener('mousedown', h); document.removeEventListener('scroll', () => setOpen(false), true); };
+    return () => { document.removeEventListener('scroll', () => setOpen(false), true); };
   }, []);
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -130,7 +128,6 @@ function EditTaskPanel({ task, project, onClose, onSave, onDelete }: EditTaskPan
     <SidePanel
       subtitle={task.title}
       onClose={onClose}
-      width="min(40vw, 520px)"
       footer={
         <>
           <button
@@ -140,100 +137,111 @@ function EditTaskPanel({ task, project, onClose, onSave, onDelete }: EditTaskPan
             <Trash2 size={14} />
             Delete Task
           </button>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <button onClick={onClose} className="notion-button border border-border">Cancel</button>
-            <button onClick={handleSave} disabled={!canSave} className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed">
+            <button onClick={handleSave} disabled={!canSave} className="notion-button bg-foreground text-background hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed">
               Save Changes
             </button>
           </div>
         </>
       }
     >
-      <div className="px-6 py-5 space-y-5">
-        {/* Title */}
+      <div className="px-6 py-5 space-y-6">
+        {/* Task Details */}
         <div>
-          <label className="block text-xs text-muted-foreground mb-1.5">Task Title *</label>
-          <input value={title} onChange={e => setTitle(e.target.value)} className="modal-input" autoFocus />
-        </div>
-
-        {/* Description */}
-        <div>
-          <label className="block text-xs text-muted-foreground mb-1.5">Description</label>
-          <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Add more details..." rows={4} className="modal-input resize-none" />
-        </div>
-
-        {/* Status dropdown */}
-        <div>
-          <label className="block text-xs text-muted-foreground mb-1.5">Progress</label>
-          <div className="relative" ref={statusRef}>
-            <button
-              onClick={() => { setStatusOpen(!statusOpen); setPhaseOpen(false); }}
-              className="notion-button border border-border w-full justify-between text-sm"
-            >
-              <span className="flex items-center gap-2">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[status]}`}>{status}</span>
-              </span>
-              <ChevronDown size={14} className="text-muted-foreground" />
-            </button>
-            {statusOpen && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setStatusOpen(false)} />
-                <div className="absolute left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-lg z-50 py-1 overflow-hidden">
-                  {STATUSES.map(s => (
-                    <button
-                      key={s}
-                      onClick={() => { setStatus(s); setStatusOpen(false); }}
-                      className="flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors whitespace-nowrap"
-                    >
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[s]}`}>{s}</span>
-                      {status === s && <Check size={14} />}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Task Details</p>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1.5">Task Title <span className="text-red-400 ml-0.5">*</span></label>
+              <input value={title} onChange={e => setTitle(e.target.value)} className="modal-input" autoFocus />
+            </div>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1.5">Description</label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Add more details..." rows={4} className="modal-input resize-none" />
+            </div>
           </div>
         </div>
 
-        {/* Phase dropdown */}
+        {/* Progress and Phase */}
         <div>
-          <label className="block text-xs text-muted-foreground mb-1.5">Phase</label>
-          <div className="relative" ref={phaseRef}>
-            <button
-              onClick={() => { setPhaseOpen(!phaseOpen); setStatusOpen(false); }}
-              className="notion-button border border-border w-full justify-between text-sm"
-            >
-              <span>{phase}</span>
-              <ChevronDown size={14} className="text-muted-foreground" />
-            </button>
-            {phaseOpen && (
-              <>
-                <div className="fixed inset-0 z-20" onClick={() => setPhaseOpen(false)} />
-                <div className="absolute left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-lg z-50 py-1 overflow-hidden">
-                  {PROJECT_PHASES.map(p => (
-                    <button
-                      key={p}
-                      onClick={() => { setPhase(p); setPhaseOpen(false); }}
-                      className="flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors whitespace-nowrap"
-                    >
-                      {p}
-                      {phase === p && <Check size={14} />}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Progress and Phase</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1.5">Progress</label>
+              <div className="relative" ref={statusRef}>
+                <button
+                  onClick={() => { setStatusOpen(!statusOpen); setPhaseOpen(false); }}
+                  className="notion-button border border-border w-full justify-between text-sm"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[status]}`}>{status}</span>
+                  </span>
+                  <ChevronDown size={14} className="text-muted-foreground" />
+                </button>
+                {statusOpen && (
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={() => setStatusOpen(false)} />
+                    <div className="absolute left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+                      {STATUSES.map(s => (
+                        <button
+                          key={s}
+                          onClick={() => { setStatus(s); setStatusOpen(false); }}
+                          className="flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors whitespace-nowrap"
+                        >
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[s]}`}>{s}</span>
+                          {status === s && <Check size={14} />}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1.5">Phase</label>
+              <div className="relative" ref={phaseRef}>
+                <button
+                  onClick={() => { setPhaseOpen(!phaseOpen); setStatusOpen(false); }}
+                  className="notion-button border border-border w-full justify-between text-sm"
+                >
+                  <span>{phase}</span>
+                  <ChevronDown size={14} className="text-muted-foreground" />
+                </button>
+                {phaseOpen && (
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={() => setPhaseOpen(false)} />
+                    <div className="absolute left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+                      {PROJECT_PHASES.map(p => (
+                        <button
+                          key={p}
+                          onClick={() => { setPhase(p); setPhaseOpen(false); }}
+                          className="flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors whitespace-nowrap"
+                        >
+                          {p}
+                          {phase === p && <Check size={14} />}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Due date */}
+        {/* Dates */}
         <div>
-          <label className="block text-xs text-muted-foreground mb-1.5">Due Date</label>
-          <DatePicker
-            value={dueDate}
-            onChange={(v) => setDueDate(v)}
-            placeholder="Select date"
-          />
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Dates</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-muted-foreground mb-1.5">Due Date</label>
+              <DatePicker
+                value={dueDate}
+                onChange={(v) => setDueDate(v)}
+                placeholder="Select date"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </SidePanel>
