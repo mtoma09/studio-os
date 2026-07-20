@@ -48,7 +48,7 @@ export function SidePanel({ title, subtitle, onClose, children, footer, width = 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
           <div>
-            <h2 className="font-semibold text-base">{title}</h2>
+            {title && <h2 className="font-semibold text-base">{title}</h2>}
             {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
           </div>
           <button onClick={handleClose} className="p-1.5 hover:bg-muted rounded-lg transition-colors">
