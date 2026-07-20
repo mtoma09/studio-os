@@ -161,7 +161,7 @@ export function SchedulesTab({ projectId }: SchedulesTabProps) {
       )}
 
       {/* Toolbar — left: All tab, right: search/sort/new */}
-      <div className="flex items-center gap-2 py-3">
+      <div className="flex items-center gap-2">
         {/* Left: "All" tab */}
         <div className="flex border border-border rounded-lg overflow-hidden">
           <button className="h-8 px-3 text-sm view-toggle-active">

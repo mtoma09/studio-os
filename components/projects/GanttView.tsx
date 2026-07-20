@@ -94,7 +94,7 @@ function PhaseMenu({ phase, isFirst, isLast, canReorder, onEdit, onDelete, onMov
       >
         <MoreHorizontal size={15} />
       </button>
-      <div className="fixed inset-0 z-[60]" onClick={close} />
+      <div className="fixed inset-0 z-[60]" style={{ overflow: 'hidden' }} onClick={close} />
       <div
         className="fixed z-[61] w-40 bg-popover border border-border rounded-xl shadow-lg py-1 overflow-hidden"
         style={{ top, left }}
@@ -202,7 +202,7 @@ function AddPhasePanel({ onClose, onSave }: AddPhasePanelProps) {
 
   const handleSave = () => {
     if (!canSave) return;
-    onSave({ id: `phase-${Date.now()}`, name: name.trim(), start, end, progress: 0 });
+    onSave({ id: `phase-${Date.now()}`, name: name.trim(), start, end, progress: 10 });
   };
 
   return (
@@ -416,21 +416,13 @@ export function GanttView({ projectName, currentPhaseName, customPhases, onAddPh
         <div className="overflow-x-auto">
           <div style={{ minWidth: STICKY_W + calendarW }} className="relative">
 
-            {/* Today line — extends from above the date row through all phase rows */}
+            {/* Today line — within phase rows only */}
             {todayOffset >= 0 && todayOffset <= totalDays && (
               <div
                 className="absolute top-0 bottom-0 z-20 pointer-events-none"
                 style={{ left: STICKY_W + todayX }}
               >
                 <div className="w-px h-full bg-foreground/40" />
-                <div className="absolute top-0 -translate-x-1/2 -translate-y-full">
-                  <div className="flex flex-col items-center">
-                    <div className="bg-foreground text-background text-[10px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap shadow-sm">
-                      Today
-                    </div>
-                    <div className="w-2 h-2 bg-foreground rounded-full mt-0.5" />
-                  </div>
-                </div>
               </div>
             )}
 

@@ -68,7 +68,7 @@ function TaskMenu({ task, onEdit, onDelete }: TaskMenuProps) {
       >
         <MoreHorizontal size={14} />
       </button>
-      <div className="fixed inset-0 z-[60]" onClick={close} />
+      <div className="fixed inset-0 z-[60]" style={{ overflow: 'hidden' }} onClick={close} />
       <div
         className="fixed z-[61] w-36 bg-popover border border-border rounded-xl shadow-lg py-1 overflow-hidden"
         style={{ top, left }}
@@ -93,8 +93,9 @@ interface EditTaskPanelProps {
   project: Project;
   onClose: () => void;
   onSave: (task: Task) => void;
+  onDelete: (id: string) => void;
 }
-function EditTaskPanel({ task, project, onClose, onSave }: EditTaskPanelProps) {
+function EditTaskPanel({ task, project, onClose, onSave, onDelete }: EditTaskPanelProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
   const [status, setStatus] = useState<TaskStatus>(task.status || (task.completed ? 'Done' : 'To do'));
@@ -128,7 +129,13 @@ function EditTaskPanel({ task, project, onClose, onSave }: EditTaskPanelProps) {
       width="min(40vw, 520px)"
       footer={
         <>
-          <div />
+          <button
+            onClick={() => { onDelete(task.id); onClose(); }}
+            className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 transition-colors"
+          >
+            <Trash2 size={14} />
+            Delete Task
+          </button>
           <div className="flex gap-2">
             <button onClick={onClose} className="notion-button border border-border">Cancel</button>
             <button onClick={handleSave} disabled={!canSave} className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed">
@@ -531,6 +538,7 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
           project={project}
           onClose={() => setEditingTask(null)}
           onSave={handleSaveTask}
+          onDelete={handleDeleteTask}
         />
       )}
 
@@ -572,7 +580,6 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
             className={`relative toolbar-icon-btn ${activeFilterCount > 0 ? 'toolbar-icon-btn-active' : ''}`}
           >
             <Filter size={18} />
-            {activeFilterCount > 0 && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-foreground" />}
           </button>
           {showFilter && (
             <>

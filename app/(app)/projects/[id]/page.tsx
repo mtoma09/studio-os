@@ -219,7 +219,7 @@ function OverviewTab({
       {/* Left Column */}
       <div className="lg:col-span-1 space-y-4">
         {/* Project Summary */}
-        <DetailSection editAction={() => onEditCard('summary')}>
+        <DetailSection>
           <div className="space-y-3">
             <DetailField label="Project Name" value={project.name} />
             <DetailField label="Address" value={project.address} />
@@ -233,7 +233,7 @@ function OverviewTab({
         </DetailSection>
 
         {/* Client */}
-        <DetailSection editAction={() => onEditCard('client')}>
+        <DetailSection>
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
@@ -263,15 +263,9 @@ function OverviewTab({
         </DetailSection>
 
         {/* Current Phase Progress */}
-        <div className="bg-card border border-border rounded-xl p-5 card-base group relative">
+        <div className="bg-card border border-border rounded-xl p-5 card-base">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-medium text-sm">Current Phase</h3>
-            <button
-              onClick={() => onEditCard('phase')}
-              className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-all"
-            >
-              Edit
-            </button>
           </div>
           <SimplifiedPhaseProgress
             currentPhase={project.currentPhase}
@@ -282,7 +276,7 @@ function OverviewTab({
         </div>
 
         {/* Team */}
-        <DetailSection editAction={() => onEditCard('team')}>
+        <DetailSection>
           <div className="space-y-3">
             {[
               { name: project.team.projectManager, role: 'Project Manager' },
@@ -306,13 +300,13 @@ function OverviewTab({
       {/* Right Columns */}
       <div className="lg:col-span-2 space-y-4">
         {project.description && (
-          <DetailSection editAction={() => onEditCard('description')}>
+          <DetailSection>
             <p className="text-sm text-muted-foreground leading-relaxed">{project.description}</p>
           </DetailSection>
         )}
 
         {(project.builder || project.architect || project.siteNotes) && (
-          <DetailSection editAction={() => onEditCard('details')}>
+          <DetailSection>
             <div className="space-y-3">
               {project.builder && <DetailField label="Builder" value={project.builder} />}
               {project.architect && <DetailField label="Architect" value={project.architect} />}
@@ -321,7 +315,7 @@ function OverviewTab({
           </DetailSection>
         )}
 
-        <DetailSection editAction={() => onEditCard('activity')}>
+        <DetailSection>
           {project.timeline.length === 0 ? (
             <EmptyState icon="history" description="Activity will appear here as the project progresses." />
           ) : (
