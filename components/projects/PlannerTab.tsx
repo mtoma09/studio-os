@@ -59,7 +59,7 @@ function TaskMenu({ task, onEdit, onDelete }: TaskMenuProps) {
   }
   const top = rect.bottom + 4;
   const left = Math.min(rect.right - 144, window.innerWidth - 160);
-  return createPortal(
+  return (
     <>
       <button
         ref={btnRef}
@@ -68,22 +68,26 @@ function TaskMenu({ task, onEdit, onDelete }: TaskMenuProps) {
       >
         <MoreHorizontal size={14} />
       </button>
-      <div className="fixed inset-0 z-[60]" style={{ overflow: 'hidden' }} onClick={close} />
-      <div
-        className="fixed z-[61] w-36 bg-popover border border-border rounded-xl shadow-lg py-1 overflow-hidden"
-        style={{ top, left }}
-      >
-        <button onClick={() => { close(); onEdit(); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-foreground">
-          <Pencil size={14} className="text-muted-foreground" />
-          Edit
-        </button>
-        <button onClick={() => { close(); onDelete(); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-red-50 transition-colors text-red-600">
-          <Trash2 size={14} />
-          Delete
-        </button>
-      </div>
-    </>,
-    document.body
+      {createPortal(
+        <>
+          <div className="fixed inset-0 z-[60]" style={{ overflow: 'hidden' }} onClick={close} />
+          <div
+            className="fixed z-[61] w-36 bg-popover border border-border rounded-xl shadow-lg py-1 overflow-hidden"
+            style={{ top, left }}
+          >
+            <button onClick={() => { close(); onEdit(); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-foreground">
+              <Pencil size={14} className="text-muted-foreground" />
+              Edit
+            </button>
+            <button onClick={() => { close(); onDelete(); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-red-50 transition-colors text-red-600">
+              <Trash2 size={14} />
+              Delete
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
+    </>
   );
 }
 

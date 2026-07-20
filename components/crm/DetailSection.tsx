@@ -12,29 +12,32 @@ interface DetailSectionProps {
 }
 
 export function DetailSection({ title, children, action, editAction }: DetailSectionProps) {
+  const hasHeader = title || action || editAction;
   return (
     <div className="bg-card border border-border rounded-xl p-5 card-base group relative">
-      <div className="flex items-center justify-between mb-4">
-        {title && <h3 className="font-medium text-sm">{title}</h3>}
-        <div className="flex items-center gap-2">
-          {editAction && (
-            <button
-              onClick={editAction}
-              className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-all"
-            >
-              Edit
-            </button>
-          )}
-          {action && (
-            <button
-              onClick={action.onClick}
-              className="notion-button text-muted-foreground text-xs"
-            >
-              {action.label}
-            </button>
-          )}
+      {hasHeader && (
+        <div className={`flex items-center justify-between ${title ? 'mb-4' : 'mb-0'}`}>
+          {title && <h3 className="font-medium text-sm">{title}</h3>}
+          <div className="flex items-center gap-2">
+            {editAction && (
+              <button
+                onClick={editAction}
+                className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-all"
+              >
+                Edit
+              </button>
+            )}
+            {action && (
+              <button
+                onClick={action.onClick}
+                className="notion-button text-muted-foreground text-xs"
+              >
+                {action.label}
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
       {children}
     </div>
   );

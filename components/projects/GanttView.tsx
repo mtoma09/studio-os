@@ -85,7 +85,7 @@ function PhaseMenu({ phase, isFirst, isLast, canReorder, onEdit, onDelete, onMov
   }
   const top = rect.bottom + 4;
   const left = Math.min(rect.right - 160, window.innerWidth - 180);
-  return createPortal(
+  return (
     <>
       <button
         ref={btnRef}
@@ -94,30 +94,34 @@ function PhaseMenu({ phase, isFirst, isLast, canReorder, onEdit, onDelete, onMov
       >
         <MoreHorizontal size={15} />
       </button>
-      <div className="fixed inset-0 z-[60]" style={{ overflow: 'hidden' }} onClick={close} />
-      <div
-        className="fixed z-[61] w-40 bg-popover border border-border rounded-xl shadow-lg py-1 overflow-hidden"
-        style={{ top, left }}
-      >
-        <button onClick={() => { close(); onEdit(); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-foreground">
-          <Pencil size={14} className="text-muted-foreground" /> Edit phase
-        </button>
-        {canReorder && (
-          <>
-            <button onClick={() => { close(); onMoveUp(); }} disabled={isFirst} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-foreground disabled:opacity-30 disabled:cursor-not-allowed">
-              <ChevronUp size={14} className="text-muted-foreground" /> Move up
+      {createPortal(
+        <>
+          <div className="fixed inset-0 z-[60]" style={{ overflow: 'hidden' }} onClick={close} />
+          <div
+            className="fixed z-[61] w-40 bg-popover border border-border rounded-xl shadow-lg py-1 overflow-hidden"
+            style={{ top, left }}
+          >
+            <button onClick={() => { close(); onEdit(); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-foreground">
+              <Pencil size={14} className="text-muted-foreground" /> Edit phase
             </button>
-            <button onClick={() => { close(); onMoveDown(); }} disabled={isLast} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-foreground disabled:opacity-30 disabled:cursor-not-allowed">
-              <ChevronDown size={14} className="text-muted-foreground" /> Move down
+            {canReorder && (
+              <>
+                <button onClick={() => { close(); onMoveUp(); }} disabled={isFirst} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-foreground disabled:opacity-30 disabled:cursor-not-allowed">
+                  <ChevronUp size={14} className="text-muted-foreground" /> Move up
+                </button>
+                <button onClick={() => { close(); onMoveDown(); }} disabled={isLast} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-foreground disabled:opacity-30 disabled:cursor-not-allowed">
+                  <ChevronDown size={14} className="text-muted-foreground" /> Move down
+                </button>
+              </>
+            )}
+            <button onClick={() => { close(); onDelete(); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-red-50 transition-colors text-red-600">
+              <Trash2 size={14} /> Delete phase
             </button>
-          </>
-        )}
-        <button onClick={() => { close(); onDelete(); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-red-50 transition-colors text-red-600">
-          <Trash2 size={14} /> Delete phase
-        </button>
-      </div>
-    </>,
-    document.body
+          </div>
+        </>,
+        document.body
+      )}
+    </>
   );
 }
 
