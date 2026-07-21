@@ -1,11 +1,9 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, Filter, Plus, Calendar, X, Trash2, Check, ChevronDown } from 'lucide-react';
+import { Search, Filter, Plus, Calendar, X, Check } from 'lucide-react';
 import { Project, PROJECT_PHASES } from '@/lib/projects-data';
 import { Task, TaskStatus } from '@/lib/crm-data';
-import { SidePanel } from '@/components/ui/SidePanel';
-import { DatePicker } from '@/components/ui/DatePicker';
 
 interface PlannerTabProps {
   project: Project;
@@ -16,173 +14,15 @@ const STATUSES: TaskStatus[] = ['To do', 'In Progress', 'Waiting', 'Done'];
 
 type ViewMode = 'progress' | 'phase';
 
-// ── Edit Task Side Panel ────────────────────────────────────────────────────
-interface EditTaskPanelProps {
-  task: Task;
-  project: Project;
-  onClose: () => void;
-  onSave: (task: Task) => void;
-  onDelete: (id: string) => void;
-}
-function EditTaskPanel({ task, project, onClose, onSave, onDelete }: EditTaskPanelProps) {
-  const [title, setTitle] = useState(task.title);
-  const [description, setDescription] = useState(task.description || '');
-  const [status, setStatus] = useState<TaskStatus>(task.status || (task.completed ? 'Done' : 'To do'));
-  const [phase, setPhase] = useState(task.phase || project.currentPhase);
-  const [dueDate, setDueDate] = useState(task.dueDate || '');
-
-  const [statusOpen, setStatusOpen] = useState(false);
-  const [phaseOpen, setPhaseOpen] = useState(false);
-  const statusRef = useRef<HTMLDivElement>(null);
-  const phaseRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (statusRef.current && !statusRef.current.contains(e.target as Node)) setStatusOpen(false);
-      if (phaseRef.current && !phaseRef.current.contains(e.target as Node)) setPhaseOpen(false);
-    };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
-
-  const canSave = title.trim();
-  const handleSave = () => {
-    if (!canSave) return;
-    onSave({ ...task, title: title.trim(), description, status, phase, dueDate, completed: status === 'Done' });
-  };
-
-  return (
-    <SidePanel
-      subtitle={task.title}
-      onClose={onClose}
-      footer={
-        <>
-          <button
-            onClick={() => { onDelete(task.id); onClose(); }}
-            className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-600 transition-colors"
-          >
-            <Trash2 size={14} />
-            Delete Task
-          </button>
-          <div className="flex items-center gap-2">
-            <button onClick={onClose} className="notion-button border border-border">Cancel</button>
-            <button onClick={handleSave} disabled={!canSave} className="notion-button bg-foreground text-background hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed">
-              Save Changes
-            </button>
-          </div>
-        </>
-      }
-    >
-      <div className="px-6 py-5 space-y-6">
-        {/* Task Details */}
-        <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Task Details</p>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1.5">Task Title <span className="text-red-400 ml-0.5">*</span></label>
-              <input value={title} onChange={e => setTitle(e.target.value)} className="modal-input" autoFocus />
-            </div>
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1.5">Description</label>
-              <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Add more details..." rows={4} className="modal-input resize-none" />
-            </div>
-          </div>
-        </div>
-
-        {/* Progress and Phase */}
-        <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Progress and Phase</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1.5">Progress</label>
-              <div className="relative" ref={statusRef}>
-                <button
-                  onClick={() => { setStatusOpen(!statusOpen); setPhaseOpen(false); }}
-                  className="notion-button border border-border w-full justify-between text-sm"
-                >
-                  <span className="text-sm">{status}</span>
-                  <ChevronDown size={14} className="text-muted-foreground" />
-                </button>
-                {statusOpen && (
-                  <>
-                    <div className="fixed inset-0 z-20" onClick={() => setStatusOpen(false)} />
-                    <div className="absolute left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-lg z-50 py-1 overflow-hidden">
-                      {STATUSES.map(s => (
-                        <button
-                          key={s}
-                          onClick={() => { setStatus(s); setStatusOpen(false); }}
-                          className="flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors whitespace-nowrap"
-                        >
-                          <span className="text-sm">{s}</span>
-                          {status === s && <Check size={14} />}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1.5">Phase</label>
-              <div className="relative" ref={phaseRef}>
-                <button
-                  onClick={() => { setPhaseOpen(!phaseOpen); setStatusOpen(false); }}
-                  className="notion-button border border-border w-full justify-between text-sm"
-                >
-                  <span>{phase}</span>
-                  <ChevronDown size={14} className="text-muted-foreground" />
-                </button>
-                {phaseOpen && (
-                  <>
-                    <div className="fixed inset-0 z-20" onClick={() => setPhaseOpen(false)} />
-                    <div className="absolute left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-lg z-50 py-1 overflow-hidden">
-                      {PROJECT_PHASES.map(p => (
-                        <button
-                          key={p}
-                          onClick={() => { setPhase(p); setPhaseOpen(false); }}
-                          className="flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors whitespace-nowrap"
-                        >
-                          {p}
-                          {phase === p && <Check size={14} />}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Dates */}
-        <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Dates</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1.5">Due Date</label>
-              <DatePicker
-                value={dueDate}
-                onChange={(v) => setDueDate(v)}
-                placeholder="Select date"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </SidePanel>
-  );
-}
-
 // ── Draggable Task Card ─────────────────────────────────────────────────────
 interface TaskCardProps {
   task: Task;
-  onEdit: () => void;
   onDragStart: () => void;
   onDragEnter: () => void;
   onDragEnd: () => void;
   isDragging: boolean;
 }
-function TaskCard({ task, onEdit, onDragStart, onDragEnter, onDragEnd, isDragging }: TaskCardProps) {
+function TaskCard({ task, onDragStart, onDragEnter, onDragEnd, isDragging }: TaskCardProps) {
   return (
     <div
       draggable
@@ -190,7 +30,6 @@ function TaskCard({ task, onEdit, onDragStart, onDragEnter, onDragEnd, isDraggin
       onDragEnter={onDragEnter}
       onDragEnd={onDragEnd}
       onDragOver={(e) => e.preventDefault()}
-      onClick={onEdit}
       className={`card-base p-3 cursor-grab active:cursor-grabbing group/task transition-opacity hover:ring-1 hover:ring-foreground/15 ${isDragging ? 'opacity-40' : ''}`}
     >
       <p className="text-sm font-medium leading-tight">{task.title}</p>
@@ -211,7 +50,6 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
   const [statusFilter, setStatusFilter] = useState<TaskStatus | null>(null);
   const [phaseFilter, setPhaseFilter] = useState<string | null>(null);
   const [addingTask, setAddingTask] = useState<{ status: TaskStatus; title: string } | null>(null);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
   const filterRef = useRef<HTMLDivElement>(null);
@@ -255,15 +93,6 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
     };
     onUpdateTasks([...tasks, newTask]);
     setAddingTask(null);
-  };
-
-  const handleSaveTask = (updated: Task) => {
-    onUpdateTasks(tasks.map(t => t.id === updated.id ? updated : t));
-    setEditingTask(null);
-  };
-
-  const handleDeleteTask = (id: string) => {
-    onUpdateTasks(tasks.filter(t => t.id !== id));
   };
 
   const handleDragStart = (id: string) => setDraggedId(id);
@@ -326,7 +155,6 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
                 <TaskCard
                   key={task.id}
                   task={task}
-                  onEdit={() => setEditingTask(task)}
                   onDragStart={() => handleDragStart(task.id)}
                   onDragEnter={() => handleCardDragEnter(task.id)}
                   onDragEnd={handleDragEnd}
@@ -415,7 +243,6 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
                       onDragEnter={() => handleCardDragEnter(task.id)}
                       onDragEnd={handleDragEnd}
                       onDragOver={(e) => e.preventDefault()}
-                      onClick={() => setEditingTask(task)}
                       className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors cursor-grab active:cursor-grabbing"
                     >
                       <span className="text-xs px-2 py-0.5 rounded-md font-medium flex-shrink-0 bg-muted text-muted-foreground">
@@ -458,16 +285,6 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
 
   return (
     <div className="space-y-4">
-      {editingTask && (
-        <EditTaskPanel
-          task={editingTask}
-          project={project}
-          onClose={() => setEditingTask(null)}
-          onSave={handleSaveTask}
-          onDelete={handleDeleteTask}
-        />
-      )}
-
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex border border-border rounded-lg overflow-hidden">

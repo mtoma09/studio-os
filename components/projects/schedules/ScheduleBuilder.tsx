@@ -304,24 +304,16 @@ export function ScheduleBuilder({ schedule, onChange, onBack, onNewSchedule }: S
 
   return (
     <div>
-      {/* ── Toolbar ── */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border/50">
-
-        {/* View Mode toggle — Summary / Financial (left aligned) */}
-        <div className="flex border border-border rounded-lg overflow-hidden">
+      {/* ── Toolbar — matches landing page position: All left, search/sort/new right ── */}
+      <div className="flex items-center gap-2">
+        {onBack && (
           <button
-            onClick={() => setViewMode('summary')}
-            className={`h-8 px-3 text-sm flex items-center transition-colors ${viewMode === 'summary' ? 'view-toggle-active' : 'text-muted-foreground hover:bg-muted/50'}`}
+            onClick={onBack}
+            className="h-8 px-3 text-sm border border-border rounded-lg text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
           >
-            Summary
+            All Schedules
           </button>
-          <button
-            onClick={() => setViewMode('financial')}
-            className={`h-8 px-3 text-sm flex items-center border-l border-border transition-colors ${viewMode === 'financial' ? 'view-toggle-active' : 'text-muted-foreground hover:bg-muted/50'}`}
-          >
-            Financial
-          </button>
-        </div>
+        )}
 
         <div className="flex-1" />
 
@@ -342,41 +334,6 @@ export function ScheduleBuilder({ schedule, onChange, onBack, onNewSchedule }: S
             >
               <X size={14} />
             </button>
-          )}
-        </div>
-
-        {/* View Section dropdown — icon only */}
-        <div className="relative">
-          <button
-            onClick={() => setShowSectionMenu(!showSectionMenu)}
-            className={`relative toolbar-icon-btn ${sectionFilter !== 'all' ? 'toolbar-icon-btn-active' : ''}`}
-          >
-            <Filter size={18} />
-          </button>
-          {showSectionMenu && (
-            <>
-              <div className="fixed inset-0 z-20" onClick={() => setShowSectionMenu(false)} />
-              <div className="absolute right-0 mt-1 w-64 bg-popover border border-border rounded-xl shadow-lg z-30 py-2 overflow-hidden">
-                <p className="px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">View Section</p>
-                <button
-                  onClick={() => { setSectionFilter('all'); setShowSectionMenu(false); }}
-                  className={`filter-item ${sectionFilter === 'all' ? 'filter-item-active' : 'filter-item-inactive'}`}
-                >
-                  All Sections
-                  {sectionFilter === 'all' && <Check size={13} />}
-                </button>
-                {schedule.sections.map(sec => (
-                  <button
-                    key={sec.id}
-                    onClick={() => { setSectionFilter(sec.id); setShowSectionMenu(false); }}
-                    className={`filter-item ${sectionFilter === sec.id ? 'filter-item-active' : 'filter-item-inactive'}`}
-                  >
-                    {sec.name}
-                    {sectionFilter === sec.id && <Check size={13} />}
-                  </button>
-                ))}
-              </div>
-            </>
           )}
         </div>
 
@@ -452,20 +409,116 @@ export function ScheduleBuilder({ schedule, onChange, onBack, onNewSchedule }: S
           </div>
         )}
 
+        {/* New Schedule */}
+        {onNewSchedule && (
+          <button
+            onClick={onNewSchedule}
+            className="flex items-center gap-1.5 h-8 px-3 text-sm bg-foreground text-background rounded-lg hover:bg-foreground/90 transition-colors font-medium"
+          >
+            <Plus size={16} />
+            New Schedule
+          </button>
+        )}
+      </div>
+
+      {/* ── Summary / Financial + section tools — below toolbar, left aligned ── */}
+      <div className="flex items-center gap-2 mt-3">
+        <div className="flex border border-border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setViewMode('summary')}
+            className={`h-8 px-3 text-sm transition-colors ${viewMode === 'summary' ? 'view-toggle-active' : 'text-muted-foreground hover:bg-muted/50'}`}
+          >
+            Summary
+          </button>
+          <button
+            onClick={() => setViewMode('financial')}
+            className={`h-8 px-3 text-sm border-l border-border transition-colors ${viewMode === 'financial' ? 'view-toggle-active' : 'text-muted-foreground hover:bg-muted/50'}`}
+          >
+            Financial
+          </button>
+        </div>
+
+        {/* View Section dropdown — icon only */}
+        <div className="relative">
+          <button
+            onClick={() => setShowSectionMenu(!showSectionMenu)}
+            className={`relative toolbar-icon-btn ${sectionFilter !== 'all' ? 'toolbar-icon-btn-active' : ''}`}
+          >
+            <Filter size={18} />
+          </button>
+          {showSectionMenu && (
+            <>
+              <div className="fixed inset-0 z-20" onClick={() => setShowSectionMenu(false)} />
+              <div className="absolute right-0 mt-1 w-64 bg-popover border border-border rounded-xl shadow-lg z-30 py-2 overflow-hidden">
+                <p className="px-3 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">View Section</p>
+                <button
+                  onClick={() => { setSectionFilter('all'); setShowSectionMenu(false); }}
+                  className={`filter-item ${sectionFilter === 'all' ? 'filter-item-active' : 'filter-item-inactive'}`}
+                >
+                  All Sections
+                  {sectionFilter === 'all' && <Check size={13} />}
+                </button>
+                {schedule.sections.map(sec => (
+                  <button
+                    key={sec.id}
+                    onClick={() => { setSectionFilter(sec.id); setShowSectionMenu(false); }}
+                    className={`filter-item ${sectionFilter === sec.id ? 'filter-item-active' : 'filter-item-inactive'}`}
+                  >
+                    {sec.name}
+                    {sectionFilter === sec.id && <Check size={13} />}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* New Section */}
+        <button
+          onClick={handleAddSection}
+          className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+        >
+          <Plus size={16} />
+          New Section
+        </button>
+
+        <div className="flex-1" />
+
+        {/* Bulk actions */}
+        {selectedProducts.length > 0 && (
+          <div className="relative">
+            <button
+              onClick={() => setShowBulkMenu(!showBulkMenu)}
+              className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              {selectedProducts.length} selected
+              <ChevronDown size={14} />
+            </button>
+            {showBulkMenu && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setShowBulkMenu(false)} />
+                <div className="absolute right-0 mt-1 w-64 bg-popover border border-border rounded-lg shadow-lg z-30 py-1">
+                  <p className="px-3 py-1.5 text-xs font-medium text-muted-foreground">Bulk Actions</p>
+                  <button onClick={() => { selectedProducts.forEach(id => { const p = allFilteredProducts.find(p => p.id === id); if (p) handleUpdateProduct(id, { ...p, status: 'Approved' }); }); setShowBulkMenu(false); }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">Change Status</button>
+                  <button className="w-full px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">Copy to Project</button>
+                  <button onClick={() => { setShowExportModal(true); setShowBulkMenu(false); }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">Export PDF Schedule</button>
+                  <div className="border-t border-border my-1" />
+                  <button onClick={() => { selectedProducts.forEach(id => handleArchiveProduct(id)); setSelectedProducts([]); setShowBulkMenu(false); }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">Archive Selected</button>
+                  <button onClick={() => { selectedProducts.forEach(id => handleDeleteProduct(id)); setSelectedProducts([]); setShowBulkMenu(false); }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-red-500 hover:text-red-600">Remove Selected</button>
+                  <div className="border-t border-border my-1" />
+                  <button onClick={() => setSelectedProducts([])} className="w-full px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">Clear Selection</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Export PDF icon-only */}
         <button
           onClick={() => setShowExportModal(true)}
           className="toolbar-icon-btn"
         >
           <FileImage size={18} />
-        </button>
-
-        {/* New Section */}
-        <button
-          onClick={handleAddSection}
-          className="flex items-center gap-1.5 h-8 px-3 text-sm bg-foreground text-background rounded-lg hover:bg-foreground/90 transition-colors font-medium"
-        >
-          New Section
         </button>
       </div>
 
