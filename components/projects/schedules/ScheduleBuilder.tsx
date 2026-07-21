@@ -7,7 +7,7 @@ import {
 } from '@/lib/schedules-data';
 import { ScheduleSection } from './ScheduleSection';
 import { ExportScheduleModal } from './ExportScheduleModal';
-import { Search, X, Filter, ArrowUpDown, Check, ChevronDown, FileImage, Plus, Table } from 'lucide-react';
+import { Search, X, Filter, ArrowUpDown, Check, ChevronDown, Plus, Table, Eye } from 'lucide-react';
 
 interface ScheduleBuilderProps {
   schedule: Schedule;
@@ -421,8 +421,9 @@ export function ScheduleBuilder({ schedule, onChange, onBack, onNewSchedule }: S
         )}
       </div>
 
-      {/* ── Summary / Financial + section tools — below toolbar, left aligned ── */}
+      {/* ── Summary / Financial (left) + Filter / Preview / New Section (right) ── */}
       <div className="flex items-center gap-2 mt-3">
+        {/* Left: Summary / Financial */}
         <div className="flex border border-border rounded-lg overflow-hidden">
           <button
             onClick={() => setViewMode('summary')}
@@ -438,7 +439,9 @@ export function ScheduleBuilder({ schedule, onChange, onBack, onNewSchedule }: S
           </button>
         </div>
 
-        {/* View Section dropdown — icon only */}
+        <div className="flex-1" />
+
+        {/* Right: Filter View Section */}
         <div className="relative">
           <button
             onClick={() => setShowSectionMenu(!showSectionMenu)}
@@ -473,6 +476,15 @@ export function ScheduleBuilder({ schedule, onChange, onBack, onNewSchedule }: S
           )}
         </div>
 
+        {/* Preview */}
+        <button
+          onClick={() => setShowExportModal(true)}
+          className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+        >
+          <Eye size={16} />
+          Preview
+        </button>
+
         {/* New Section */}
         <button
           onClick={handleAddSection}
@@ -482,9 +494,7 @@ export function ScheduleBuilder({ schedule, onChange, onBack, onNewSchedule }: S
           New Section
         </button>
 
-        <div className="flex-1" />
-
-        {/* Bulk actions */}
+        {/* Bulk actions — contextual, appears only when products are selected */}
         {selectedProducts.length > 0 && (
           <div className="relative">
             <button
@@ -512,14 +522,6 @@ export function ScheduleBuilder({ schedule, onChange, onBack, onNewSchedule }: S
             )}
           </div>
         )}
-
-        {/* Export PDF icon-only */}
-        <button
-          onClick={() => setShowExportModal(true)}
-          className="toolbar-icon-btn"
-        >
-          <FileImage size={18} />
-        </button>
       </div>
 
       {/* ── Schedule Content — sits directly on page ── */}
