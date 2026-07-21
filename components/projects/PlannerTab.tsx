@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { Search, Filter, Plus, Calendar, X, Ellipsis as MoreHorizontal, Pencil, Trash2, GripVertical, Check, ChevronDown } from 'lucide-react';
+import { Search, Filter, Plus, Calendar, X, Trash2, Check, ChevronDown } from 'lucide-react';
 import { Project, PROJECT_PHASES } from '@/lib/projects-data';
 import { Task, TaskStatus } from '@/lib/crm-data';
 import { SidePanel } from '@/components/ui/SidePanel';
@@ -15,79 +14,7 @@ interface PlannerTabProps {
 
 const STATUSES: TaskStatus[] = ['To do', 'In Progress', 'Waiting', 'Done'];
 
-const statusColors: Record<TaskStatus, string> = {
-  'To do': 'bg-muted text-muted-foreground',
-  'In Progress': 'bg-blue-50 text-blue-700 border border-blue-200',
-  'Waiting': 'bg-amber-50 text-amber-700 border border-amber-200',
-  'Done': 'bg-green-50 text-green-700 border border-green-200',
-};
-
 type ViewMode = 'progress' | 'phase';
-
-// ── Task Card Menu ─────────────────────────────────────────────────────────
-interface TaskMenuProps {
-  task: Task;
-  onEdit: () => void;
-  onDelete: () => void;
-}
-function TaskMenu({ task, onEdit, onDelete }: TaskMenuProps) {
-  const [open, setOpen] = useState(false);
-  const [rect, setRect] = useState<DOMRect | null>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    document.addEventListener('scroll', () => setOpen(false), true);
-    return () => { document.removeEventListener('scroll', () => setOpen(false), true); };
-  }, []);
-  const handleToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!open && btnRef.current) setRect(btnRef.current.getBoundingClientRect());
-    setOpen(!open);
-  };
-  const close = () => setOpen(false);
-  if (!open || !rect) {
-    return (
-      <button
-        ref={btnRef}
-        onClick={handleToggle}
-        className="w-6 h-6 rounded flex items-center justify-center hover:bg-muted/80 transition-colors text-muted-foreground hover:text-foreground flex-shrink-0"
-      >
-        <MoreHorizontal size={14} />
-      </button>
-    );
-  }
-  const top = rect.bottom + 4;
-  const left = Math.min(rect.right - 144, window.innerWidth - 160);
-  return (
-    <>
-      <button
-        ref={btnRef}
-        onClick={handleToggle}
-        className="w-6 h-6 rounded flex items-center justify-center hover:bg-muted/80 transition-colors text-muted-foreground hover:text-foreground flex-shrink-0"
-      >
-        <MoreHorizontal size={14} />
-      </button>
-      {createPortal(
-        <>
-          <div className="fixed inset-0 z-[60]" style={{ overflow: 'hidden' }} onClick={close} />
-          <div
-            className="fixed z-[61] w-36 bg-popover border border-border rounded-xl shadow-lg py-1 overflow-hidden"
-            style={{ top, left }}
-          >
-            <button onClick={() => { close(); onEdit(); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-foreground">
-              <Pencil size={14} className="text-muted-foreground" />
-              Edit
-            </button>
-            <button onClick={() => { close(); onDelete(); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left hover:bg-red-50 transition-colors text-red-600">
-              <Trash2 size={14} />
-              Delete
-            </button>
-          </div>
-        </>,
-        document.body
-      )}
-    </>
-  );
-}
 
 // ── Edit Task Side Panel ────────────────────────────────────────────────────
 interface EditTaskPanelProps {
@@ -126,7 +53,7 @@ function EditTaskPanel({ task, project, onClose, onSave, onDelete }: EditTaskPan
 
   return (
     <SidePanel
-      subtitle={task.title}
+      title={task.title}
       onClose={onClose}
       footer={
         <>
@@ -173,9 +100,7 @@ function EditTaskPanel({ task, project, onClose, onSave, onDelete }: EditTaskPan
                   onClick={() => { setStatusOpen(!statusOpen); setPhaseOpen(false); }}
                   className="notion-button border border-border w-full justify-between text-sm"
                 >
-                  <span className="flex items-center gap-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[status]}`}>{status}</span>
-                  </span>
+                  <span className="text-sm">{status}</span>
                   <ChevronDown size={14} className="text-muted-foreground" />
                 </button>
                 {statusOpen && (
@@ -188,7 +113,7 @@ function EditTaskPanel({ task, project, onClose, onSave, onDelete }: EditTaskPan
                           onClick={() => { setStatus(s); setStatusOpen(false); }}
                           className="flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors whitespace-nowrap"
                         >
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[s]}`}>{s}</span>
+                          <span className="text-sm">{s}</span>
                           {status === s && <Check size={14} />}
                         </button>
                       ))}
@@ -252,13 +177,12 @@ function EditTaskPanel({ task, project, onClose, onSave, onDelete }: EditTaskPan
 interface TaskCardProps {
   task: Task;
   onEdit: () => void;
-  onDelete: () => void;
   onDragStart: () => void;
   onDragEnter: () => void;
   onDragEnd: () => void;
   isDragging: boolean;
 }
-function TaskCard({ task, onEdit, onDelete, onDragStart, onDragEnter, onDragEnd, isDragging }: TaskCardProps) {
+function TaskCard({ task, onEdit, onDragStart, onDragEnter, onDragEnd, isDragging }: TaskCardProps) {
   return (
     <div
       draggable
@@ -266,18 +190,10 @@ function TaskCard({ task, onEdit, onDelete, onDragStart, onDragEnter, onDragEnd,
       onDragEnter={onDragEnter}
       onDragEnd={onDragEnd}
       onDragOver={(e) => e.preventDefault()}
-      className={`card-base p-3 cursor-grab active:cursor-grabbing group/task transition-opacity ${isDragging ? 'opacity-40' : ''}`}
+      onClick={onEdit}
+      className={`card-base p-3 cursor-grab active:cursor-grabbing group/task transition-opacity hover:ring-1 hover:ring-foreground/15 ${isDragging ? 'opacity-40' : ''}`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-medium leading-tight flex-1 min-w-0">{task.title}</p>
-        <TaskMenu task={task} onEdit={onEdit} onDelete={onDelete} />
-      </div>
-      {task.description && (
-        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
-      )}
-      {task.phase && (
-        <p className="text-xs text-muted-foreground mt-1 truncate">{task.phase}</p>
-      )}
+      <p className="text-sm font-medium leading-tight">{task.title}</p>
       {task.dueDate && (
         <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
           <Calendar size={11} />
@@ -391,8 +307,8 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
           >
             {/* Column header */}
             <div className="flex items-center justify-between mb-2 px-1">
-              <div className="flex items-center gap-2">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[status]}`}>{status}</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-sm font-semibold">{status}</span>
                 <span className="text-xs text-muted-foreground">{columns[status].length}</span>
               </div>
               <button
@@ -407,21 +323,15 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
             {/* Column body */}
             <div className={`flex-1 space-y-2 min-h-[120px] bg-muted/20 rounded-xl p-2 transition-colors ${dragOverStatus === status && draggedId ? 'ring-2 ring-foreground/20' : ''}`}>
               {columns[status].map(task => (
-                <div key={task.id} className="relative">
-                  {/* Grip handle */}
-                  <div className="absolute -left-0.5 top-1/2 -translate-y-1/2 text-muted-foreground/30 cursor-grab opacity-0 group-hover/task:opacity-100 transition-opacity z-10">
-                    <GripVertical size={12} />
-                  </div>
-                  <TaskCard
-                    task={task}
-                    onEdit={() => setEditingTask(task)}
-                    onDelete={() => handleDeleteTask(task.id)}
-                    onDragStart={() => handleDragStart(task.id)}
-                    onDragEnter={() => handleCardDragEnter(task.id)}
-                    onDragEnd={handleDragEnd}
-                    isDragging={draggedId === task.id}
-                  />
-                </div>
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onEdit={() => setEditingTask(task)}
+                  onDragStart={() => handleDragStart(task.id)}
+                  onDragEnter={() => handleCardDragEnter(task.id)}
+                  onDragEnd={handleDragEnd}
+                  isDragging={draggedId === task.id}
+                />
               ))}
 
               {/* Inline add task form */}
@@ -498,19 +408,23 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
               ) : (
                 <div className="divide-y divide-border/40">
                   {items.map(task => (
-                    <div key={task.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors group/task">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${statusColors[task.status || (task.completed ? 'Done' : 'To do')]}`}>
+                    <div
+                      key={task.id}
+                      draggable
+                      onDragStart={() => handleDragStart(task.id)}
+                      onDragEnter={() => handleCardDragEnter(task.id)}
+                      onDragEnd={handleDragEnd}
+                      onDragOver={(e) => e.preventDefault()}
+                      onClick={() => setEditingTask(task)}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors cursor-grab active:cursor-grabbing"
+                    >
+                      <span className="text-xs px-2 py-0.5 rounded-md font-medium flex-shrink-0 bg-muted text-muted-foreground">
                         {task.status || (task.completed ? 'Done' : 'To do')}
                       </span>
                       <p className="text-sm flex-1 min-w-0 truncate">{task.title}</p>
                       {task.dueDate && (
                         <span className="text-xs text-muted-foreground flex-shrink-0">{task.dueDate}</span>
                       )}
-                      <TaskMenu
-                        task={task}
-                        onEdit={() => setEditingTask(task)}
-                        onDelete={() => handleDeleteTask(task.id)}
-                      />
                     </div>
                   ))}
                   {addingTask && (

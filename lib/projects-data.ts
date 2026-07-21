@@ -69,6 +69,7 @@ export interface Project {
   projectManager: string;
   builder: string | null;
   architect: string | null;
+  consultants: { id: string; role: string; name: string }[];
   siteNotes: string | null;
   pinned: boolean;
   coverIndex: number;
@@ -153,6 +154,7 @@ export const mockProjects: Project[] = [
     projectManager: 'Ellie S.',
     builder: 'Pacific Constructions',
     architect: 'Studio Architecture',
+    consultants: [],
     siteNotes: 'Site access via rear lane. Parking available on street. Council DA approved.',
     pinned: false,
     coverIndex: 0,
@@ -205,6 +207,7 @@ export const mockProjects: Project[] = [
     projectManager: 'Ellie S.',
     builder: null,
     architect: null,
+    consultants: [],
     siteNotes: 'Strata approval required for bathroom modifications.',
     pinned: false,
     coverIndex: 1,
@@ -249,6 +252,7 @@ export const mockProjects: Project[] = [
     projectManager: 'Ellie S.',
     builder: 'Coastal Builders',
     architect: 'Alexandra Thompson (client)',
+    consultants: [],
     siteNotes: 'Cliffside site requires engineering certification. DA for extension approved.',
     pinned: false,
     coverIndex: 2,
@@ -296,6 +300,7 @@ export const mockProjects: Project[] = [
     projectManager: 'Ellie S.',
     builder: 'FitOut Co',
     architect: null,
+    consultants: [],
     siteNotes: 'After-hours access only. Building management requires 48hr notice.',
     pinned: false,
     coverIndex: 3,
@@ -337,6 +342,7 @@ export const mockProjects: Project[] = [
     projectManager: 'Ellie S.',
     builder: null,
     architect: 'Heritage Architects',
+    consultants: [],
     siteNotes: 'Heritage constraints on external modifications. Lift access to penthouse level.',
     pinned: false,
     coverIndex: 4,
@@ -376,6 +382,7 @@ export const mockProjects: Project[] = [
     projectManager: 'Ellie S.',
     builder: 'Interior FitOuts',
     architect: 'Studio Architecture',
+    consultants: [],
     siteNotes: '24/7 hotel operation. Work scheduled for low-occupancy periods.',
     pinned: false,
     coverIndex: 5,

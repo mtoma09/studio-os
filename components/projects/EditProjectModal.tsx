@@ -7,6 +7,7 @@ import { SelectDropdown } from './SelectDropdown';
 import { DesignerSelect } from '@/components/crm/DesignerSelect';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { SidePanel } from '@/components/ui/SidePanel';
+import { Plus, X } from 'lucide-react';
 
 interface EditProjectModalProps {
   project: Project;
@@ -29,6 +30,7 @@ export function EditProjectModal({ project, onClose, onSave }: EditProjectModalP
     projectManager: project.projectManager,
     builder: project.builder || '',
     architect: project.architect || '',
+    consultants: project.consultants || [],
     siteNotes: project.siteNotes || '',
   });
 
@@ -50,6 +52,7 @@ export function EditProjectModal({ project, onClose, onSave }: EditProjectModalP
       projectManager: form.projectManager,
       builder: form.builder || null,
       architect: form.architect || null,
+      consultants: form.consultants,
       siteNotes: form.siteNotes || null,
     });
     onClose();
@@ -146,6 +149,51 @@ export function EditProjectModal({ project, onClose, onSave }: EditProjectModalP
             <Field label="Site Notes" className="col-span-2">
               <textarea value={form.siteNotes} onChange={(e) => set('siteNotes', e.target.value)} rows={2} className="modal-input resize-none" />
             </Field>
+          </div>
+        </div>
+
+        {/* Consultants */}
+        <div>
+          <SectionLabel>Consultants</SectionLabel>
+          <div className="space-y-2">
+            {form.consultants.map((c) => (
+              <div key={c.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                <input
+                  value={c.role}
+                  onChange={(e) => setForm((prev) => ({
+                    ...prev,
+                    consultants: prev.consultants.map((x) => x.id === c.id ? { ...x, role: e.target.value } : x),
+                  }))}
+                  placeholder="Role (e.g. Structural Engineer)"
+                  className="modal-input"
+                />
+                <input
+                  value={c.name}
+                  onChange={(e) => setForm((prev) => ({
+                    ...prev,
+                    consultants: prev.consultants.map((x) => x.id === c.id ? { ...x, name: e.target.value } : x),
+                  }))}
+                  placeholder="Name"
+                  className="modal-input"
+                />
+                <button
+                  onClick={() => setForm((prev) => ({ ...prev, consultants: prev.consultants.filter((x) => x.id !== c.id) }))}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => setForm((prev) => ({
+                ...prev,
+                consultants: [...prev.consultants, { id: `con-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, role: '', name: '' }],
+              }))}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Plus size={14} />
+              Add Consultant
+            </button>
           </div>
         </div>
       </div>

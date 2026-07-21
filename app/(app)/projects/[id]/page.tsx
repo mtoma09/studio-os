@@ -218,8 +218,8 @@ function OverviewTab({
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* Left Column */}
       <div className="lg:col-span-1 space-y-4">
-        {/* Project Summary */}
-        <DetailSection>
+        {/* Project Details */}
+        <DetailSection title="Project Details">
           <div className="space-y-3">
             <DetailField label="Project Name" value={project.name} />
             <DetailField label="Address" value={project.address} />
@@ -232,8 +232,8 @@ function OverviewTab({
           </div>
         </DetailSection>
 
-        {/* Client */}
-        <DetailSection>
+        {/* Client Details */}
+        <DetailSection title="Client Details">
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
@@ -275,8 +275,8 @@ function OverviewTab({
           />
         </div>
 
-        {/* Team */}
-        <DetailSection>
+        {/* Project Team */}
+        <DetailSection title="Project Team">
           <div className="space-y-3">
             {[
               { name: project.team.projectManager, role: 'Project Manager' },
@@ -300,22 +300,26 @@ function OverviewTab({
       {/* Right Columns */}
       <div className="lg:col-span-2 space-y-4">
         {project.description && (
-          <DetailSection>
+          <DetailSection title="Description">
             <p className="text-sm text-muted-foreground leading-relaxed">{project.description}</p>
           </DetailSection>
         )}
 
-        {(project.builder || project.architect || project.siteNotes) && (
-          <DetailSection>
+        {/* Additional Details */}
+        {(project.builder || project.architect || (project.consultants && project.consultants.length > 0) || project.siteNotes) && (
+          <DetailSection title="Additional Details">
             <div className="space-y-3">
               {project.builder && <DetailField label="Builder" value={project.builder} />}
               {project.architect && <DetailField label="Architect" value={project.architect} />}
+              {project.consultants?.map((c) => (
+                <DetailField key={c.id} label={c.role} value={c.name} />
+              ))}
               {project.siteNotes && <DetailField label="Site Notes" value={project.siteNotes} />}
             </div>
           </DetailSection>
         )}
 
-        <DetailSection>
+        <DetailSection title="Recent Activity">
           {project.timeline.length === 0 ? (
             <EmptyState icon="history" description="Activity will appear here as the project progresses." />
           ) : (
@@ -323,7 +327,7 @@ function OverviewTab({
           )}
         </DetailSection>
 
-        <DetailSection>
+        <DetailSection title="Notes">
           <NotesPanel notes={project.notes} />
         </DetailSection>
       </div>
