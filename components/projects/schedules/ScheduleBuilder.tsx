@@ -12,6 +12,8 @@ import { Search, X, Filter, ArrowUpDown, Check, ChevronDown, FileImage, Plus, Ta
 interface ScheduleBuilderProps {
   schedule: Schedule;
   onChange: (schedule: Schedule) => void;
+  onBack?: () => void;
+  onNewSchedule?: () => void;
 }
 
 const SORT_OPTIONS = [
@@ -25,7 +27,7 @@ const SORT_OPTIONS = [
   { label: 'Product Details', value: 'details' },
 ];
 
-export function ScheduleBuilder({ schedule, onChange }: ScheduleBuilderProps) {
+export function ScheduleBuilder({ schedule, onChange, onBack, onNewSchedule }: ScheduleBuilderProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('none');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');

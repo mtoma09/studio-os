@@ -6,7 +6,7 @@ import {
 } from '@/lib/schedules-data';
 import { ScheduleBuilder } from './ScheduleBuilder';
 import { SidePanel } from '@/components/ui/SidePanel';
-import { Search, ArrowUpDown, Check, Plus, Table, Trash2, ArrowRight } from 'lucide-react';
+import { Search, ArrowUpDown, Check, Plus, Table, ArrowRight } from 'lucide-react';
 
 interface SchedulesTabProps {
   projectId: string;
@@ -26,13 +26,12 @@ function useLocalSchedules(projectId: string) {
     setSchedules(prev => [...prev, s]);
     return s;
   };
-  const remove = (id: string) => setSchedules(prev => prev.filter(s => s.id !== id));
   const update = (updated: Schedule) => setSchedules(prev => prev.map(s => s.id === updated.id ? updated : s));
-  return { schedules, create, remove, update };
+  return { schedules, create, update };
 }
 
 export function SchedulesTab({ projectId }: SchedulesTabProps) {
-  const { schedules, create, remove, update } = useLocalSchedules(projectId);
+  const { schedules, create, update } = useLocalSchedules(projectId);
   const [activeScheduleId, setActiveScheduleId] = useState<string | null>(null);
   const [showNewPanel, setShowNewPanel] = useState(false);
   const [newName, setNewName] = useState('');
@@ -57,39 +56,15 @@ export function SchedulesTab({ projectId }: SchedulesTabProps) {
     setNewName('');
   };
 
-  const handleDelete = (scheduleId: string) => {
-    remove(scheduleId);
-    if (activeScheduleId === scheduleId) setActiveScheduleId(null);
-  };
-
   // ── Builder view ──────────────────────────────────────────────────────────
   if (activeSchedule) {
     return (
-      <div>
-        {/* Navigation bar — All button left, matches Planner toolbar style */}
-        <div className="flex items-center gap-2 py-3">
-          <div className="flex border border-border rounded-lg overflow-hidden">
-            <button
-              onClick={() => setActiveScheduleId(null)}
-              className="h-8 px-3 text-sm text-muted-foreground hover:bg-muted/50 transition-colors"
-            >
-              All
-            </button>
-          </div>
-
-          <div className="flex-1" />
-
-          <button
-            onClick={() => handleDelete(activeSchedule.id)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors"
-          >
-            <Trash2 size={14} />
-            Delete Schedule
-          </button>
-        </div>
-
-        <ScheduleBuilder schedule={activeSchedule} onChange={update} />
-      </div>
+      <ScheduleBuilder
+        schedule={activeSchedule}
+        onChange={update}
+        onBack={() => setActiveScheduleId(null)}
+        onNewSchedule={() => setShowNewPanel(true)}
+      />
     );
   }
 
@@ -286,12 +261,6 @@ export function SchedulesTab({ projectId }: SchedulesTabProps) {
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(schedule.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-muted rounded transition-all text-muted-foreground hover:text-red-500"
-                    >
-                      <Trash2 size={16} />
-                    </button>
                   </div>
 
                   <div className="flex items-center gap-2 mb-3">

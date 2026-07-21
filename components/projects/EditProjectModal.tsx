@@ -146,9 +146,6 @@ export function EditProjectModal({ project, onClose, onSave }: EditProjectModalP
             <Field label="Architect">
               <input value={form.architect} onChange={(e) => set('architect', e.target.value)} className="modal-input" />
             </Field>
-            <Field label="Site Notes" className="col-span-2">
-              <textarea value={form.siteNotes} onChange={(e) => set('siteNotes', e.target.value)} rows={2} className="modal-input resize-none" />
-            </Field>
           </div>
         </div>
 
@@ -195,6 +192,12 @@ export function EditProjectModal({ project, onClose, onSave }: EditProjectModalP
               Add Consultant
             </button>
           </div>
+        </div>
+
+        {/* Site Notes */}
+        <div>
+          <SectionLabel>Site Notes</SectionLabel>
+          <textarea value={form.siteNotes} onChange={(e) => set('siteNotes', e.target.value)} rows={3} className="modal-input resize-none" />
         </div>
       </div>
     </SidePanel>

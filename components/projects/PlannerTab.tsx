@@ -53,7 +53,7 @@ function EditTaskPanel({ task, project, onClose, onSave, onDelete }: EditTaskPan
 
   return (
     <SidePanel
-      title={task.title}
+      subtitle={task.title}
       onClose={onClose}
       footer={
         <>

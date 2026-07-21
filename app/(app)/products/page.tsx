@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/crm/EmptyState';
 import { useActivity } from '@/lib/activity-context';
 import { DynamicIcon } from '@/lib/icons';
 import {
-  Search, X, ArrowLeft, Link as LinkIcon, Sparkles, LoaderCircle,
+  Search, X, Link as LinkIcon, Sparkles, LoaderCircle,
   CheckCircle2, Package, LayoutGrid, Rows3, type LucideIcon,
 } from 'lucide-react';
 
@@ -483,7 +483,6 @@ export default function ProductsPage() {
                 onClick={() => setActiveCollection(null)}
                 className="h-8 px-3 text-sm text-muted-foreground hover:bg-muted/50 transition-colors flex items-center gap-1.5"
               >
-                <ArrowLeft size={16} />
                 All Collections
               </button>
             </div>
