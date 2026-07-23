@@ -93,7 +93,10 @@ export default function ProjectWorkspacePage() {
   };
 
   const handleAddPhase = (p: GanttPhase) => setCustomPhases(prev => [...prev, p]);
-  const handleEditPhase = (p: GanttPhase) => setCustomPhases(prev => prev.map(x => x.id === p.id ? p : x));
+  const handleEditPhase = (p: GanttPhase) => setCustomPhases(prev => {
+    const exists = prev.some(x => x.id === p.id);
+    return exists ? prev.map(x => x.id === p.id ? p : x) : [...prev, p];
+  });
   const handleDeletePhase = (pid: string) => setCustomPhases(prev => prev.filter(x => x.id !== pid));
 
   return (

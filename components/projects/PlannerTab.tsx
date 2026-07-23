@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, Filter, Plus, Calendar, X, Check } from 'lucide-react';
+import { Search, Filter, Plus, Calendar, X, Check, Trash2 } from 'lucide-react';
 import { Project, PROJECT_PHASES } from '@/lib/projects-data';
 import { Task, TaskStatus } from '@/lib/crm-data';
 import { SidePanel } from '@/components/ui/SidePanel';
@@ -27,8 +27,9 @@ interface TaskCardProps {
   onDragEnd: () => void;
   isDragging: boolean;
   onClick: () => void;
+  onDelete: () => void;
 }
-function TaskCard({ task, onDragStart, onDragEnter, onDragEnd, isDragging, onClick }: TaskCardProps) {
+function TaskCard({ task, onDragStart, onDragEnter, onDragEnd, isDragging, onClick, onDelete }: TaskCardProps) {
   return (
     <div
       draggable
@@ -39,7 +40,16 @@ function TaskCard({ task, onDragStart, onDragEnter, onDragEnd, isDragging, onCli
       onClick={onClick}
       className={`card-base p-3 cursor-grab active:cursor-grabbing group/task transition-opacity hover:ring-1 hover:ring-foreground/15 ${isDragging ? 'opacity-40' : ''}`}
     >
-      <p className="text-sm font-medium leading-tight">{task.title}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-medium leading-tight flex-1 min-w-0">{task.title}</p>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="opacity-0 group-hover/task:opacity-100 text-muted-foreground hover:text-red-500 transition-all flex-shrink-0 p-0.5"
+          title="Delete task"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
       {task.dueDate && (
         <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
           <Calendar size={11} />
@@ -107,21 +117,53 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
   const handleDragEnterCol = (status: TaskStatus) => {
     setDragOverStatus(status);
     if (!draggedId) return;
+    const draggedTask = tasks.find(t => t.id === draggedId);
+    if (!draggedTask || draggedTask.status === status) return;
     const updated = tasks.map(t => t.id === draggedId ? { ...t, status, completed: status === 'Done' } : t);
     onUpdateTasks(updated);
   };
   const handleDragEnd = () => { setDraggedId(null); setDragOverStatus(null); };
 
-  // Reorder within a column
+  // Reorder within a column — reorders within the same status group
   const handleCardDragEnter = (id: string) => {
     if (!draggedId || draggedId === id) return;
-    const fromIdx = tasks.findIndex(t => t.id === draggedId);
-    const toIdx = tasks.findIndex(t => t.id === id);
-    if (fromIdx === -1 || toIdx === -1) return;
-    const updated = [...tasks];
-    const [moved] = updated.splice(fromIdx, 1);
-    updated.splice(toIdx, 0, moved);
+    const draggedTask = tasks.find(t => t.id === draggedId);
+    const targetTask = tasks.find(t => t.id === id);
+    if (!draggedTask || !targetTask) return;
+    // Only reorder within the same status group
+    const draggedStatus = draggedTask.status || (draggedTask.completed ? 'Done' : 'To do');
+    const targetStatus = targetTask.status || (targetTask.completed ? 'Done' : 'To do');
+    if (draggedStatus !== targetStatus) return;
+
+    // Get only tasks in this status group, in their current order
+    const groupTasks = tasks.filter(t => (t.status || (t.completed ? 'Done' : 'To do')) === draggedStatus);
+    const fromGroupIdx = groupTasks.findIndex(t => t.id === draggedId);
+    const toGroupIdx = groupTasks.findIndex(t => t.id === id);
+    if (fromGroupIdx === -1 || toGroupIdx === -1) return;
+
+    // Reorder within the group
+    const reorderedGroup = [...groupTasks];
+    const [moved] = reorderedGroup.splice(fromGroupIdx, 1);
+    reorderedGroup.splice(toGroupIdx, 0, moved);
+
+    // Rebuild full task array: replace group tasks with reordered versions, keep others in place
+    const reorderedIds = new Set(reorderedGroup.map(t => t.id));
+    const otherTasks = tasks.filter(t => !reorderedIds.has(t.id));
+    const updated: Task[] = [];
+    let groupIdx = 0;
+    for (const t of tasks) {
+      if (reorderedIds.has(t.id)) {
+        updated.push(reorderedGroup[groupIdx++]);
+      } else {
+        updated.push(t);
+      }
+    }
     onUpdateTasks(updated);
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    onUpdateTasks(tasks.filter(t => t.id !== taskId));
+    if (editingTask?.id === taskId) setEditingTask(null);
   };
 
   // ── Kanban ──────────────────────────────────────────────────────────────
@@ -168,6 +210,7 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
                   onDragEnd={handleDragEnd}
                   isDragging={draggedId === task.id}
                   onClick={() => setEditingTask(task)}
+                  onDelete={() => handleDeleteTask(task.id)}
                 />
               ))}
 
@@ -253,7 +296,7 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
                       onDragEnd={handleDragEnd}
                       onDragOver={(e) => e.preventDefault()}
                       onClick={() => setEditingTask(task)}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors cursor-grab active:cursor-grabbing"
+                      className="group/task flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors cursor-grab active:cursor-grabbing"
                     >
                       <span className="text-xs px-2 py-0.5 rounded-md font-medium flex-shrink-0 bg-muted text-muted-foreground">
                         {task.status || (task.completed ? 'Done' : 'To do')}
@@ -262,6 +305,13 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
                       {task.dueDate && (
                         <span className="text-xs text-muted-foreground flex-shrink-0">{task.dueDate}</span>
                       )}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
+                        className="opacity-0 group-hover/task:opacity-100 text-muted-foreground hover:text-red-500 transition-all flex-shrink-0 p-0.5"
+                        title="Delete task"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   ))}
                   {addingTask && (
@@ -386,14 +436,22 @@ export function PlannerTab({ project, onUpdateTasks }: PlannerTabProps) {
           subtitle={editingTask.title}
           onClose={() => setEditingTask(null)}
           footer={
-            <><div /><div className="flex gap-2">
-              <button onClick={() => setEditingTask(null)} className="notion-button border border-border">Cancel</button>
-              <button onClick={() => {
-                const updated = tasks.map(t => t.id === editingTask.id ? editingTask : t);
-                onUpdateTasks(updated);
-                setEditingTask(null);
-              }} className="btn-primary">Save</button>
-            </div></>
+            <>
+              <button
+                onClick={() => handleDeleteTask(editingTask.id)}
+                className="notion-button border border-border text-sm hover:text-red-600 hover:border-red-300"
+              >
+                Delete Task
+              </button>
+              <div className="flex gap-2">
+                <button onClick={() => setEditingTask(null)} className="notion-button border border-border">Cancel</button>
+                <button onClick={() => {
+                  const updated = tasks.map(t => t.id === editingTask.id ? editingTask : t);
+                  onUpdateTasks(updated);
+                  setEditingTask(null);
+                }} className="btn-primary">Save</button>
+              </div>
+            </>
           }
         >
           <div className="px-6 py-5 space-y-4">
