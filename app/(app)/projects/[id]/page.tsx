@@ -16,7 +16,8 @@ import { EditProjectModal } from '@/components/projects/EditProjectModal';
 import { ArchiveDialog } from '@/components/projects/ArchiveDialog';
 import { PlannerTab } from '@/components/projects/PlannerTab';
 import { FinanceTab } from '@/components/projects/FinanceTab';
-import { GanttView, GanttPhase } from '@/components/projects/GanttView';
+import { GanttPhase, GanttMilestone } from '@/components/projects/GanttView';
+import { TimelineTab } from '@/components/projects/TimelineTab';
 import { Timeline } from '@/components/crm/Timeline';
 import { NotesPanel } from '@/components/crm/NotesPanel';
 import { DetailSection, DetailField } from '@/components/crm/DetailSection';
@@ -38,6 +39,7 @@ export default function ProjectWorkspacePage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [phaseConfirmMsg, setPhaseConfirmMsg] = useState('');
   const [customPhases, setCustomPhases] = useState<GanttPhase[]>([]);
+  const [customMilestones, setCustomMilestones] = useState<GanttMilestone[]>([]);
 
   const project = projects.find((p) => p.id === id);
 
@@ -93,7 +95,6 @@ export default function ProjectWorkspacePage() {
   const handleAddPhase = (p: GanttPhase) => setCustomPhases(prev => [...prev, p]);
   const handleEditPhase = (p: GanttPhase) => setCustomPhases(prev => prev.map(x => x.id === p.id ? p : x));
   const handleDeletePhase = (pid: string) => setCustomPhases(prev => prev.filter(x => x.id !== pid));
-  const handleReorderPhases = (phases: GanttPhase[]) => setCustomPhases(phases);
 
   return (
     <>
@@ -176,17 +177,7 @@ export default function ProjectWorkspacePage() {
         )}
 
         {activeTab === 'Timeline' && (
-          <div className="space-y-4">
-            <GanttView
-              projectName={project.name}
-              currentPhaseName={project.currentPhase}
-              customPhases={customPhases}
-              onAddPhase={handleAddPhase}
-              onEditPhase={handleEditPhase}
-              onDeletePhase={handleDeletePhase}
-              onReorderPhases={handleReorderPhases}
-            />
-          </div>
+          <TimelineTab project={project} customPhases={customPhases} customMilestones={customMilestones} onAddPhase={handleAddPhase} onEditPhase={handleEditPhase} onDeletePhase={handleDeletePhase} onAddMilestone={(m) => setCustomMilestones(prev => [...prev, m])} />
         )}
 
         {activeTab === 'Schedules' && (

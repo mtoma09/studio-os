@@ -4,7 +4,11 @@ import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { SidePanel } from '@/components/ui/SidePanel';
 import { DatePicker } from '@/components/ui/DatePicker';
-import { PROJECT_PHASES } from '@/lib/projects-data';
+import { ProjectStatusBadge } from '@/components/projects/ProjectStatusBadge';
+import { ProjectStatus, PROJECT_PHASES } from '@/lib/projects-data';
+import { ChevronDown, Plus, Diamond } from 'lucide-react';
+
+// ── Types ────────────────────────────────────────────────────────────────────
 
 export interface GanttPhase {
   id: string;
@@ -12,16 +16,28 @@ export interface GanttPhase {
   start: string; // ISO date YYYY-MM-DD
   end: string;
   progress: number; // 0–100
+  taskCount: number;
+  taskComplete: number;
+}
+
+export interface GanttMilestone {
+  id: string;
+  name: string;
+  date: string; // ISO date
+  assignedUsers: string[];
+  status: 'On Track' | 'At Risk' | 'Completed' | 'Delayed';
+  phaseId?: string;
 }
 
 interface GanttViewProps {
   projectName: string;
-  currentPhaseName: string;
-  customPhases: GanttPhase[];
+  projectStatus: ProjectStatus;
+  phases: GanttPhase[];
+  milestones?: GanttMilestone[];
   onAddPhase?: (phase: GanttPhase) => void;
   onEditPhase?: (phase: GanttPhase) => void;
   onDeletePhase?: (id: string) => void;
-  onReorderPhases?: (phases: GanttPhase[]) => void;
+  onAddMilestone?: (m: GanttMilestone) => void;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -31,23 +47,31 @@ const ZOOM_LEVELS: ZoomLevel[] = ['Day', 'Week', 'Month', 'Quarter', 'Year'];
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const SIDEBAR_W = 300;
-const ROW_H = 52;
-const GROUP_ROW_H = 24;
-const UNIT_ROW_H = 22;
+const ROW_H = 56;
+const GROUP_ROW_H = 28;
+const UNIT_ROW_H = 24;
 const HEADER_H = GROUP_ROW_H + UNIT_ROW_H;
+const BAR_H = 30;
+const PROJECT_HEADER_H = 48;
 
-// Phase bar colours — monochromatic
+// Phase bar colours — monochromatic ramp
 const PHASE_BAR_COLORS = [
-  { bar: 'bg-foreground/18', text: 'text-foreground/85', fill: 'bg-foreground/45', dot: 'bg-foreground/55' },
-  { bar: 'bg-foreground/14', text: 'text-foreground/75', fill: 'bg-foreground/36', dot: 'bg-foreground/46' },
-  { bar: 'bg-foreground/11', text: 'text-foreground/70', fill: 'bg-foreground/28', dot: 'bg-foreground/38' },
-  { bar: 'bg-foreground/9', text: 'text-foreground/65', fill: 'bg-foreground/22', dot: 'bg-foreground/32' },
+  { bar: 'bg-foreground/18', text: 'text-foreground/90', fill: 'bg-foreground/55', dot: 'bg-foreground/60' },
+  { bar: 'bg-foreground/14', text: 'text-foreground/80', fill: 'bg-foreground/42', dot: 'bg-foreground/48' },
+  { bar: 'bg-foreground/11', text: 'text-foreground/75', fill: 'bg-foreground/32', dot: 'bg-foreground/38' },
+  { bar: 'bg-foreground/9', text: 'text-foreground/70', fill: 'bg-foreground/24', dot: 'bg-foreground/30' },
 ];
+
+const MILESTONE_STATUS_COLORS: Record<GanttMilestone['status'], string> = {
+  'On Track': 'text-foreground/70',
+  'At Risk': 'text-amber-500',
+  'Completed': 'text-foreground',
+  'Delayed': 'text-red-500',
+};
 
 // ── Date helpers (local-time safe) ───────────────────────────────────────────
 
 function parseDate(s: string): Date {
-  // Parse as local date, not UTC — avoids off-by-one from timezone shift
   const [y, m, d] = s.split('-').map(Number);
   if (y && m && d) return new Date(y, m - 1, d);
   const fallback = new Date(s);
@@ -90,6 +114,12 @@ function startOfYear(d: Date): Date {
   return new Date(d.getFullYear(), 0, 1);
 }
 
+function fmtRange(s: string, e: string): string {
+  const sd = parseDate(s);
+  const ed = parseDate(e);
+  return `${sd.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} – ${ed.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`;
+}
+
 // ── Zoom config ──────────────────────────────────────────────────────────────
 
 interface ZoomConfig {
@@ -101,38 +131,38 @@ interface ZoomConfig {
 
 const ZOOM_CONFIGS: Record<ZoomLevel, ZoomConfig> = {
   Day: {
-    unitWidth: 32,
+    unitWidth: 36,
     unitLabel: (d) => String(d.getDate()),
     unitStep: (d, n) => addDays(d, n),
     groupLabel: (d) => `${MONTH_LABELS[d.getMonth()]} ${d.getFullYear()}`,
   },
   Week: {
-    unitWidth: 60,
+    unitWidth: 64,
     unitLabel: (d) => `${MONTH_LABELS[d.getMonth()].slice(0, 1)} ${d.getDate()}`,
     unitStep: (d, n) => addDays(d, n * 7),
     groupLabel: (d) => `${MONTH_LABELS[d.getMonth()]} ${d.getFullYear()}`,
   },
   Month: {
-    unitWidth: 88,
+    unitWidth: 96,
     unitLabel: (d) => MONTH_LABELS[d.getMonth()],
     unitStep: (d, n) => new Date(d.getFullYear(), d.getMonth() + n, 1),
     groupLabel: (d) => String(d.getFullYear()),
   },
   Quarter: {
-    unitWidth: 80,
+    unitWidth: 88,
     unitLabel: (d) => `Q${Math.floor(d.getMonth() / 3) + 1}`,
     unitStep: (d, n) => new Date(d.getFullYear(), d.getMonth() + n * 3, 1),
     groupLabel: (d) => String(d.getFullYear()),
   },
   Year: {
-    unitWidth: 110,
+    unitWidth: 120,
     unitLabel: (d) => String(d.getFullYear()),
     unitStep: (d, n) => new Date(d.getFullYear() + n, 0, 1),
     groupLabel: () => 'Years',
   },
 };
 
-// ── Dropdown Select (no icons) ───────────────────────────────────────────────
+// ── Dropdown Select ──────────────────────────────────────────────────────────
 
 function SelectDropdown({ value, options, onChange, placeholder }: {
   value: string;
@@ -151,7 +181,7 @@ function SelectDropdown({ value, options, onChange, placeholder }: {
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(!open)} className="notion-button border border-border w-full justify-between text-sm">
         <span className={value ? '' : 'text-muted-foreground'}>{value || placeholder || 'Select...'}</span>
-        <span className="text-muted-foreground text-xs">▾</span>
+        <ChevronDown size={14} className="text-muted-foreground" />
       </button>
       {open && (
         <>
@@ -164,7 +194,7 @@ function SelectDropdown({ value, options, onChange, placeholder }: {
                 className="flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors whitespace-nowrap"
               >
                 <span className={value === opt ? 'text-foreground font-medium' : 'text-muted-foreground'}>{opt}</span>
-                {value === opt && <span className="text-foreground/50 text-xs">●</span>}
+                {value === opt && <span className="w-1.5 h-1.5 rounded-full bg-foreground/50" />}
               </button>
             ))}
           </div>
@@ -174,7 +204,7 @@ function SelectDropdown({ value, options, onChange, placeholder }: {
   );
 }
 
-// ── Date Dropdown ────────────────────────────────────────────────────────────
+// ── Date Dropdown ───────────────────────────────────────────────────────────
 
 function DateDropdown({ value, onChange, label }: {
   value: string;
@@ -192,15 +222,9 @@ function DateDropdown({ value, onChange, label }: {
   return <DatePicker value={display} onChange={handleChange} placeholder={label} />;
 }
 
-// ── Phase Overflow Menu (no icons) ───────────────────────────────────────────
+// ── Phase Overflow Menu ──────────────────────────────────────────────────────
 
-function PhaseMenu({ canReorder, onEdit, onDelete, onMoveUp, onMoveDown }: {
-  canReorder: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-}) {
+function PhaseMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -243,16 +267,6 @@ function PhaseMenu({ canReorder, onEdit, onDelete, onMoveUp, onMoveDown }: {
         <button onClick={(e) => { e.stopPropagation(); setOpen(false); onEdit(); }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-foreground">
           Edit phase
         </button>
-        {canReorder && (
-          <>
-            <button onClick={(e) => { e.stopPropagation(); setOpen(false); onMoveUp(); }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-foreground">
-              Move up
-            </button>
-            <button onClick={(e) => { e.stopPropagation(); setOpen(false); onMoveDown(); }} className="w-full px-3 py-2 text-sm text-left hover:bg-muted transition-colors text-foreground">
-              Move down
-            </button>
-          </>
-        )}
         <button onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(); }} className="w-full px-3 py-2 text-sm text-left hover:bg-red-50 transition-colors text-red-600">
           Delete phase
         </button>
@@ -279,7 +293,7 @@ function AddPhasePanel({ onClose, onSave }: { onClose: () => void; onSave: (p: G
           <div />
           <div className="flex items-center gap-2">
             <button onClick={onClose} className="notion-button border border-border">Cancel</button>
-            <button onClick={() => canSave && onSave({ id: `phase-${Date.now()}`, name: name.trim(), start, end, progress: 0 })} disabled={!canSave} className="notion-button bg-foreground text-background hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed">
+            <button onClick={() => canSave && onSave({ id: `phase-${Date.now()}`, name: name.trim(), start, end, progress: 0, taskCount: 0, taskComplete: 0 })} disabled={!canSave} className="notion-button bg-foreground text-background hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed">
               Add Phase
             </button>
           </div>
@@ -362,7 +376,7 @@ function EditPhasePanel({ phase, onClose, onSave }: { phase: GanttPhase; onClose
   );
 }
 
-// ── Zoom Selector (no icons) ─────────────────────────────────────────────────
+// ── Zoom Selector ────────────────────────────────────────────────────────────
 
 function ZoomSelector({ value, onChange }: { value: ZoomLevel; onChange: (v: ZoomLevel) => void }) {
   const [open, setOpen] = useState(false);
@@ -376,7 +390,7 @@ function ZoomSelector({ value, onChange }: { value: ZoomLevel; onChange: (v: Zoo
     <div className="relative" ref={ref}>
       <button onClick={() => setOpen(!open)} className="notion-button border border-border text-sm w-28 justify-between">
         <span>{value}</span>
-        <span className="text-muted-foreground text-xs">▾</span>
+        <ChevronDown size={14} className="text-muted-foreground" />
       </button>
       {open && (
         <>
@@ -389,7 +403,7 @@ function ZoomSelector({ value, onChange }: { value: ZoomLevel; onChange: (v: Zoo
                 className="flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-muted transition-colors whitespace-nowrap min-w-[8rem]"
               >
                 <span className={value === level ? 'text-foreground font-medium' : 'text-muted-foreground'}>{level}</span>
-                {value === level && <span className="text-foreground/50 text-xs">●</span>}
+                {value === level && <span className="w-1.5 h-1.5 rounded-full bg-foreground/50" />}
               </button>
             ))}
           </div>
@@ -399,65 +413,100 @@ function ZoomSelector({ value, onChange }: { value: ZoomLevel; onChange: (v: Zoo
   );
 }
 
+// ── Milestone Tooltip ────────────────────────────────────────────────────────
+
+function MilestoneTooltip({ milestone, rect }: { milestone: GanttMilestone; rect: DOMRect }) {
+  const top = rect.top - 8;
+  const left = Math.min(rect.left, window.innerWidth - 240);
+
+  return createPortal(
+    <div
+      className="fixed z-[70] w-56 bg-popover border border-border rounded-xl shadow-lg p-3 pointer-events-none"
+      style={{ top: top - 120 < 0 ? rect.bottom + 8 : top - 120, left }}
+    >
+      <div className="flex items-center gap-2 mb-1.5">
+        <Diamond size={12} className="text-foreground/70 flex-shrink-0" />
+        <p className="text-sm font-medium truncate">{milestone.name}</p>
+      </div>
+      <div className="space-y-1 text-xs text-muted-foreground">
+        <p>Due: <span className="text-foreground">{parseDate(milestone.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}</span></p>
+        {milestone.assignedUsers.length > 0 && (
+          <p>Assigned: <span className="text-foreground">{milestone.assignedUsers.join(', ')}</span></p>
+        )}
+        <p>Status: <span className={MILESTONE_STATUS_COLORS[milestone.status]}>{milestone.status}</span></p>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 // ── Main GanttView ───────────────────────────────────────────────────────────
 
-export function GanttView({ projectName, currentPhaseName, customPhases, onAddPhase, onEditPhase, onDeletePhase, onReorderPhases }: GanttViewProps) {
+export function GanttView({
+  projectName,
+  projectStatus,
+  phases,
+  milestones = [],
+  onAddPhase,
+  onEditPhase,
+  onDeletePhase,
+}: GanttViewProps) {
   const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const [zoom, setZoom] = useState<ZoomLevel>('Week');
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [editingPhase, setEditingPhase] = useState<GanttPhase | null>(null);
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
+  const [hoveredMilestone, setHoveredMilestone] = useState<{ m: GanttMilestone; rect: DOMRect } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // All phases = current phase (auto-generated) + custom phases
-  const allPhases = useMemo(() => {
-    const current: GanttPhase = {
-      id: 'current-phase',
-      name: currentPhaseName,
-      start: toISO(addDays(today, -14)),
-      end: toISO(addDays(today, 21)),
-      progress: 50,
-    };
-    return [current, ...customPhases];
-  }, [currentPhaseName, customPhases]);
+  const config = ZOOM_CONFIGS[zoom];
 
   // Timeline bounds — align to zoom unit start, pad either side
   const { timelineStart, timelineEnd } = useMemo(() => {
-    let minD = parseDate(allPhases[0].start);
-    let maxD = parseDate(allPhases[0].end);
-    allPhases.forEach(p => {
+    if (phases.length === 0) {
+      const s = addDays(today, -30);
+      const e = addDays(today, 60);
+      return { timelineStart: s, timelineEnd: e };
+    }
+    let minD = parseDate(phases[0].start);
+    let maxD = parseDate(phases[0].end);
+    phases.forEach(p => {
       const s = parseDate(p.start);
       const e = parseDate(p.end);
       if (s < minD) minD = s;
       if (e > maxD) maxD = e;
     });
+    milestones.forEach(m => {
+      const d = parseDate(m.date);
+      if (d < minD) minD = d;
+      if (d > maxD) maxD = d;
+    });
 
     let alignedStart: Date;
     let alignedEnd: Date;
-    const cfg = ZOOM_CONFIGS[zoom];
+    if (zoom === 'Day') { alignedStart = addDays(minD, -7); alignedEnd = addDays(maxD, 14); }
+    else if (zoom === 'Week') { alignedStart = addDays(startOfWeek(minD), -14); alignedEnd = addDays(startOfWeek(maxD), 28); }
+    else if (zoom === 'Month') { alignedStart = addDays(startOfMonth(minD), -31); alignedEnd = addDays(startOfMonth(maxD), 62); }
+    else if (zoom === 'Quarter') { alignedStart = startOfQuarter(addDays(minD, -45)); alignedEnd = addDays(startOfQuarter(maxD), 180); }
+    else { alignedStart = startOfYear(addDays(minD, -90)); alignedEnd = addDays(startOfYear(maxD), 365); }
 
-    if (zoom === 'Day') { alignedStart = addDays(minD, -5); alignedEnd = addDays(maxD, 7); }
-    else if (zoom === 'Week') { alignedStart = addDays(startOfWeek(minD), -7); alignedEnd = addDays(startOfWeek(maxD), 21); }
-    else if (zoom === 'Month') { alignedStart = addDays(startOfMonth(minD), -16); alignedEnd = addDays(startOfMonth(maxD), 35); }
-    else if (zoom === 'Quarter') { alignedStart = startOfQuarter(addDays(minD, -30)); alignedEnd = addDays(startOfQuarter(maxD), 120); }
-    else { alignedStart = startOfYear(addDays(minD, -60)); alignedEnd = addDays(startOfYear(maxD), 250); }
-
-    void cfg;
     return { timelineStart: alignedStart, timelineEnd: alignedEnd };
-  }, [allPhases, zoom]);
-
-  const config = ZOOM_CONFIGS[zoom];
+  }, [phases, milestones, zoom, today]);
 
   // Generate unit columns and group spans
   const { units, groups, calendarW } = useMemo(() => {
-    const unitArr: { date: Date; label: string; isMonthStart: boolean }[] = [];
-    let cur = timelineStart;
+    const unitArr: { date: Date; label: string; isMonthStart: boolean; isWeekend: boolean }[] = [];
+    let cur = new Date(timelineStart);
     let guard = 0;
     while (cur < timelineEnd && guard < 5000) {
       const prev = guard > 0 ? unitArr[guard - 1].date : null;
       unitArr.push({
-        date: cur,
+        date: new Date(cur),
         label: config.unitLabel(cur),
         isMonthStart: !prev || prev.getMonth() !== cur.getMonth(),
+        isWeekend: zoom === 'Day' && (cur.getDay() === 0 || cur.getDay() === 6),
       });
       cur = config.unitStep(cur, 1);
       guard++;
@@ -480,216 +529,250 @@ export function GanttView({ projectName, currentPhaseName, customPhases, onAddPh
     return { units: unitArr, groups: groupArr, calendarW: unitArr.length * config.unitWidth };
   }, [timelineStart, timelineEnd, config]);
 
-  // Today X position (in pixels from timeline start)
-  const todayOffsetDays = daysBetween(timelineStart, today);
   const totalDays = daysBetween(timelineStart, timelineEnd);
   const dayWidth = calendarW / Math.max(totalDays, 1);
+
+  // Today position
+  const todayOffsetDays = daysBetween(timelineStart, today);
   const todayX = todayOffsetDays * dayWidth;
   const todayVisible = todayOffsetDays >= 0 && todayOffsetDays <= totalDays;
 
   // Scroll to today
   const scrollToToday = useCallback(() => {
     const container = scrollRef.current;
-    if (!container || !todayVisible) return;
+    if (!container) return;
     const targetX = todayX - container.clientWidth / 2 + SIDEBAR_W;
     container.scrollTo({ left: Math.max(0, targetX), behavior: 'smooth' });
-  }, [todayX, todayVisible]);
+  }, [todayX]);
 
-  const movePhase = (idx: number, dir: -1 | 1) => {
-    const newIdx = idx + dir;
-    if (newIdx < 1 || newIdx >= allPhases.length) return;
-    const custom = [...customPhases];
-    const [moved] = custom.splice(idx - 1, 1);
-    custom.splice(newIdx - 1, 0, moved);
-    onReorderPhases?.(custom);
+  // Auto-scroll to today on mount
+  useEffect(() => {
+    const t = setTimeout(scrollToToday, 100);
+    return () => clearTimeout(t);
+  }, [scrollToToday]);
+
+  const handleMilestoneEnter = (m: GanttMilestone, e: React.MouseEvent) => {
+    const target = e.currentTarget as HTMLElement;
+    setHoveredMilestone({ m, rect: target.getBoundingClientRect() });
   };
+
+  const totalRows = phases.length + 1; // +1 for "New Phase" row
 
   return (
     <>
       {showAddPanel && <AddPhasePanel onClose={() => setShowAddPanel(false)} onSave={(p) => { onAddPhase?.(p); setShowAddPanel(false); }} />}
       {editingPhase && <EditPhasePanel phase={editingPhase} onClose={() => setEditingPhase(null)} onSave={(p) => { onEditPhase?.(p); setEditingPhase(null); }} />}
+      {hoveredMilestone && <MilestoneTooltip milestone={hoveredMilestone.m} rect={hoveredMilestone.rect} />}
 
-      <div className="card-base overflow-hidden">
-        {allPhases.length === 0 && (
-          <div className="px-6 py-16 text-center">
-            <p className="text-sm font-medium text-foreground">No project phases yet</p>
-            <p className="text-xs text-muted-foreground mt-1">Create your first project phase to begin planning your project timeline.</p>
-            <button onClick={() => setShowAddPanel(true)} className="mt-3 notion-button bg-foreground text-background hover:bg-foreground/90 text-xs">
-              New Phase
-            </button>
-          </div>
-        )}
+      <div className="card-base overflow-hidden flex flex-col" style={{ height: 'calc(100vh - 140px)' }}>
+        {/* ── Scrollable area ── */}
+        <div
+          ref={scrollRef}
+          className="overflow-auto modal-scroll flex-1"
+        >
+          <div style={{ width: SIDEBAR_W + calendarW }} className="relative">
 
-        {allPhases.length > 0 && (
-          <div
-            ref={scrollRef}
-            className="overflow-auto modal-scroll"
-            style={{ maxHeight: '72vh' }}
-          >
-            {/* Inner content sized to sidebar + calendar width */}
-            <div style={{ width: SIDEBAR_W + calendarW }} className="relative">
-
-              {/* ── HEADER: flex row with two children (sidebar | calendar) ── */}
-              {/* Sidebar header cell sits ABOVE the sidebar column in the same flex row as the calendar header.
-                  Because they are siblings in a flex row (not overlapping divs), the sidebar never gets covered. */}
-              <div className="flex sticky top-0 z-30 border-b border-border">
-                {/* Sidebar header cell */}
-                <div
-                  className="flex-shrink-0 bg-muted/25 border-r border-b border-border flex flex-col"
-                  style={{ width: SIDEBAR_W, height: HEADER_H, position: 'sticky', left: 0, zIndex: 40 }}
-                >
-                  <div className="flex items-center px-4" style={{ height: GROUP_ROW_H }}>
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Projects</span>
-                  </div>
-                  <div className="flex items-center px-4 border-t border-border/30" style={{ height: UNIT_ROW_H }}>
-                    <span className="text-[10px] text-muted-foreground">Phases</span>
-                  </div>
+            {/* ── HEADER ROW ── */}
+            <div className="flex sticky top-0 z-40 border-b border-border">
+              {/* Sidebar header — project name */}
+              <div
+                className="flex-shrink-0 bg-muted/30 border-r border-border flex flex-col"
+                style={{ width: SIDEBAR_W, height: HEADER_H + PROJECT_HEADER_H, position: 'sticky', left: 0, zIndex: 50 }}
+              >
+                {/* "Projects" label row */}
+                <div className="flex items-center px-4 border-b border-border/30" style={{ height: GROUP_ROW_H }}>
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Projects</span>
                 </div>
-
-                {/* Calendar header cell */}
-                <div className="flex flex-col" style={{ width: calendarW }}>
-                  {/* Group row (months / years) */}
-                  <div className="flex bg-muted/20 border-b border-border/30" style={{ height: GROUP_ROW_H }}>
-                    {groups.map((g, i) => (
-                      <div key={i} className="text-xs font-medium text-muted-foreground flex items-center px-2 border-r border-border/25" style={{ width: g.width }}>
-                        {g.label}
-                      </div>
-                    ))}
-                  </div>
-                  {/* Unit row (days / weeks / months) */}
-                  <div className="flex bg-card" style={{ height: UNIT_ROW_H }}>
-                    {units.map((u, i) => (
-                      <div
-                        key={i}
-                        className={`text-[10px] text-center flex items-center justify-center border-r border-border/20 ${u.isMonthStart ? 'font-semibold text-foreground/60' : 'text-muted-foreground'}`}
-                        style={{ width: config.unitWidth }}
-                      >
-                        {u.label}
-                      </div>
-                    ))}
-                  </div>
+                {/* "Phases" sub-label row */}
+                <div className="flex items-center px-4 border-b border-border/30" style={{ height: UNIT_ROW_H }}>
+                  <span className="text-[10px] text-muted-foreground">Phases</span>
+                </div>
+                {/* Project header row */}
+                <div className="flex items-center gap-2 px-4" style={{ height: PROJECT_HEADER_H }}>
+                  <span className="text-base leading-none flex-shrink-0">▼</span>
+                  <span className="text-sm font-semibold truncate flex-1">{projectName}</span>
+                  <ProjectStatusBadge status={projectStatus} />
                 </div>
               </div>
 
-              {/* ── BODY: flex row with two children (sidebar | timeline grid) ── */}
-              <div className="flex">
-                {/* Sidebar column — sticky left, always above grid content */}
-                <div
-                  className="flex-shrink-0 bg-card border-r border-border"
-                  style={{ width: SIDEBAR_W, position: 'sticky', left: 0, zIndex: 20 }}
-                >
-                  {allPhases.map((phase, i) => {
-                    const colors = PHASE_BAR_COLORS[i % PHASE_BAR_COLORS.length];
-                    const isCurrent = phase.id === 'current-phase';
-                    return (
-                      <div
-                        key={phase.id}
-                        className="flex items-center justify-between gap-2 px-4 border-b border-border/30 hover:bg-muted/20 transition-colors group"
-                        style={{ height: ROW_H }}
-                        onDoubleClick={() => setEditingPhase(phase)}
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${colors.dot}`} />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{phase.name}</p>
-                            <p className="text-[11px] text-muted-foreground truncate">
-                              {parseDate(phase.start).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} – {parseDate(phase.end).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
-                            </p>
-                          </div>
-                          {isCurrent && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-foreground text-background font-medium flex-shrink-0">Current</span>}
-                        </div>
-                        <div className={`flex-shrink-0 ${isCurrent ? 'opacity-30' : 'opacity-0 group-hover:opacity-100'}`}>
-                          <PhaseMenu
-                            canReorder={!isCurrent}
-                            onEdit={() => setEditingPhase(phase)}
-                            onDelete={() => { if (!isCurrent) onDeletePhase?.(phase.id); }}
-                            onMoveUp={() => movePhase(i, -1)}
-                            onMoveDown={() => movePhase(i, 1)}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* Add phase row */}
-                  <button
-                    onClick={() => setShowAddPanel(true)}
-                    className="flex items-center gap-2 px-4 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/20 transition-colors w-full"
-                    style={{ height: ROW_H }}
-                  >
-                    <span className="text-base leading-none">+</span>
-                    New Phase
-                  </button>
+              {/* Calendar header */}
+              <div className="flex flex-col" style={{ width: calendarW }}>
+                {/* Group row */}
+                <div className="flex bg-muted/20 border-b border-border/30" style={{ height: GROUP_ROW_H }}>
+                  {groups.map((g, i) => (
+                    <div key={i} className="text-xs font-medium text-muted-foreground flex items-center px-2 border-r border-border/25" style={{ width: g.width }}>
+                      {g.label}
+                    </div>
+                  ))}
                 </div>
-
-                {/* Timeline grid column */}
-                <div className="relative" style={{ width: calendarW }}>
-                  {/* Alternating background strips */}
+                {/* Unit row */}
+                <div className="flex bg-card" style={{ height: UNIT_ROW_H }}>
                   {units.map((u, i) => (
                     <div
                       key={i}
-                      className={`absolute top-0 bottom-0 ${i % 2 === 0 ? 'bg-muted/[0.06]' : ''} ${u.isMonthStart ? 'border-l border-border/15' : ''}`}
-                      style={{ left: i * config.unitWidth, width: config.unitWidth }}
-                    />
-                  ))}
-
-                  {/* Today indicator */}
-                  {todayVisible && (
-                    <div className="absolute top-0 bottom-0 z-10 pointer-events-none" style={{ left: todayX }}>
-                      <div className="w-px h-full bg-foreground/45" />
-                      <div className="absolute -left-[3px] top-0 bottom-0 w-[7px] bg-foreground/[0.04]" />
-                      <div className="absolute -top-0.5 -left-3 text-[9px] font-semibold uppercase tracking-wider text-background bg-foreground/70 rounded px-1 py-px">
-                        Today
-                      </div>
+                      className={`text-[10px] text-center flex items-center justify-center border-r border-border/20 ${u.isMonthStart ? 'font-semibold text-foreground/60' : 'text-muted-foreground'} ${u.isWeekend ? 'bg-muted/20' : ''}`}
+                      style={{ width: config.unitWidth }}
+                    >
+                      {u.label}
                     </div>
-                  )}
+                  ))}
+                </div>
+                {/* Project header spacer row (aligns with sidebar project header) */}
+                <div className="bg-muted/15 border-b border-border/30" style={{ height: PROJECT_HEADER_H }} />
+              </div>
+            </div>
 
-                  {/* Phase bars */}
-                  {allPhases.map((phase, i) => {
-                    const colors = PHASE_BAR_COLORS[i % PHASE_BAR_COLORS.length];
-                    const startOff = daysBetween(timelineStart, parseDate(phase.start));
-                    const endOff = daysBetween(timelineStart, parseDate(phase.end));
-                    const barLeft = Math.max(0, startOff) * dayWidth;
-                    const barWidth = Math.max((Math.min(totalDays, endOff) - Math.max(0, startOff)) * dayWidth, 24);
-                    const barTop = i * ROW_H + (ROW_H - 28) / 2;
+            {/* ── BODY ROW ── */}
+            <div className="flex">
+              {/* Sidebar column — sticky left */}
+              <div
+                className="flex-shrink-0 bg-card border-r border-border"
+                style={{ width: SIDEBAR_W, position: 'sticky', left: 0, zIndex: 30 }}
+              >
+                {/* "Active" sub-header */}
+                <div className="flex items-center px-4 py-1.5 bg-muted/15 border-b border-border/20">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Active</span>
+                </div>
 
-                    return (
-                      <div key={phase.id}>
-                        {/* Row background */}
-                        <div className="absolute left-0 right-0 border-b border-border/20" style={{ top: i * ROW_H, height: ROW_H }} />
-                        {/* Bar */}
-                        <div
-                          className="absolute rounded-lg overflow-hidden transition-all hover:ring-1 hover:ring-foreground/20"
-                          style={{ left: barLeft, width: barWidth, top: barTop, height: 28 }}
-                          onDoubleClick={() => setEditingPhase(phase)}
-                        >
-                          <div className={`absolute inset-0 ${colors.bar}`} />
-                          <div className={`absolute inset-y-0 left-0 rounded-l-lg ${colors.fill} transition-all duration-300`} style={{ width: `${phase.progress}%` }} />
-                          {barWidth > 60 && (
-                            <span className={`absolute inset-0 flex items-center px-2.5 text-[11px] font-medium truncate ${colors.text}`}>
-                              {phase.name}
-                            </span>
-                          )}
-                          {barWidth > 120 && (
-                            <span className="absolute inset-y-0 right-2 flex items-center text-[10px] opacity-60">
-                              {parseDate(phase.end).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
-                            </span>
-                          )}
+                {phases.map((phase, i) => {
+                  const colors = PHASE_BAR_COLORS[i % PHASE_BAR_COLORS.length];
+                  const isSelected = selectedPhaseId === phase.id;
+                  return (
+                    <div
+                      key={phase.id}
+                      onClick={() => setSelectedPhaseId(phase.id)}
+                      onDoubleClick={() => setEditingPhase(phase)}
+                      className={`flex items-center justify-between gap-2 px-4 border-b border-border/20 transition-colors group cursor-pointer ${
+                        isSelected ? 'bg-muted/40' : 'hover:bg-muted/20'
+                      }`}
+                      style={{ height: ROW_H }}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${colors.dot}`} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{phase.name}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">
+                            {phase.taskComplete} of {phase.taskCount} Task{phase.taskCount !== 1 ? 's' : ''}
+                          </p>
                         </div>
                       </div>
-                    );
-                  })}
+                      <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <PhaseMenu
+                          onEdit={() => setEditingPhase(phase)}
+                          onDelete={() => onDeletePhase?.(phase.id)}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
 
-                  {/* Add phase row spacer */}
-                  <div className="border-b border-border/20" style={{ height: ROW_H }} />
-                </div>
+                {/* New Phase row */}
+                <button
+                  onClick={() => setShowAddPanel(true)}
+                  className="flex items-center gap-2 px-4 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/20 transition-colors w-full border-b border-border/20"
+                  style={{ height: ROW_H }}
+                >
+                  <Plus size={16} />
+                  New Phase
+                </button>
+              </div>
+
+              {/* Timeline grid column */}
+              <div className="relative" style={{ width: calendarW, height: totalRows * ROW_H + 34 }}>
+                {/* Alternating background strips + weekend shading */}
+                {units.map((u, i) => (
+                  <div
+                    key={i}
+                    className={`absolute top-0 bottom-0 ${i % 2 === 0 ? 'bg-muted/[0.04]' : ''} ${u.isWeekend ? 'bg-muted/[0.08]' : ''} ${u.isMonthStart ? 'border-l border-border/10' : ''}`}
+                    style={{ left: i * config.unitWidth, width: config.unitWidth }}
+                  />
+                ))}
+
+                {/* "Active" spacer row (matches sidebar) */}
+                <div className="absolute left-0 right-0 border-b border-border/20 bg-muted/10" style={{ top: 0, height: 34 }} />
+
+                {/* Today indicator */}
+                {todayVisible && (
+                  <div className="absolute top-0 bottom-0 z-10 pointer-events-none" style={{ left: todayX }}>
+                    <div className="w-px h-full bg-foreground/50" />
+                    <div className="absolute -left-0.5 top-0 bottom-0 w-1 bg-foreground/[0.05]" />
+                    <div className="absolute -top-px left-0 -translate-x-1/2 text-[9px] font-semibold uppercase tracking-wider text-background bg-foreground/70 rounded px-1.5 py-px whitespace-nowrap">
+                      Today
+                    </div>
+                  </div>
+                )}
+
+                {/* Phase bars */}
+                {phases.map((phase, i) => {
+                  const colors = PHASE_BAR_COLORS[i % PHASE_BAR_COLORS.length];
+                  const startOff = daysBetween(timelineStart, parseDate(phase.start));
+                  const endOff = daysBetween(timelineStart, parseDate(phase.end));
+                  const barLeft = Math.max(0, startOff) * dayWidth;
+                  const barWidth = Math.max((Math.min(totalDays, endOff) - Math.max(0, startOff)) * dayWidth, 24);
+                  const barTop = 34 + i * ROW_H + (ROW_H - BAR_H) / 2;
+                  const isSelected = selectedPhaseId === phase.id;
+
+                  return (
+                    <div key={phase.id}>
+                      {/* Row background + separator */}
+                      <div
+                        className={`absolute left-0 right-0 border-b border-border/20 ${isSelected ? 'bg-muted/20' : ''}`}
+                        style={{ top: 34 + i * ROW_H, height: ROW_H }}
+                      />
+                      {/* Bar */}
+                      <div
+                        className={`absolute rounded-lg overflow-hidden transition-all hover:ring-1 hover:ring-foreground/25 ${isSelected ? 'ring-1 ring-foreground/20' : ''}`}
+                        style={{ left: barLeft, width: barWidth, top: barTop, height: BAR_H }}
+                        onDoubleClick={() => setEditingPhase(phase)}
+                      >
+                        <div className={`absolute inset-0 ${colors.bar}`} />
+                        <div className={`absolute inset-y-0 left-0 rounded-l-lg ${colors.fill} transition-all duration-500`} style={{ width: `${phase.progress}%` }} />
+                        {barWidth > 60 && (
+                          <span className={`absolute inset-0 flex items-center px-2.5 text-[11px] font-medium truncate ${colors.text}`}>
+                            {phase.name}
+                          </span>
+                        )}
+                        {barWidth > 120 && (
+                          <span className="absolute inset-y-0 right-2 flex items-center text-[10px] opacity-60">
+                            {parseDate(phase.end).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Milestones */}
+                {milestones.map(m => {
+                  const mOff = daysBetween(timelineStart, parseDate(m.date));
+                  const mX = mOff * dayWidth;
+                  if (mX < 0 || mX > calendarW) return null;
+                  // Position milestone at the row of its phase, or first row
+                  const phaseIdx = m.phaseId ? phases.findIndex(p => p.id === m.phaseId) : 0;
+                  const rowIdx = phaseIdx >= 0 ? phaseIdx : 0;
+                  const mTop = 34 + rowIdx * ROW_H + ROW_H / 2;
+                  return (
+                    <div
+                      key={m.id}
+                      className="absolute z-20 cursor-pointer"
+                      style={{ left: mX - 7, top: mTop - 7 }}
+                      onMouseEnter={(e) => handleMilestoneEnter(m, e)}
+                      onMouseLeave={() => setHoveredMilestone(null)}
+                    >
+                      <div className="w-3.5 h-3.5 rotate-45 border-2 border-foreground/70 bg-background rounded-sm hover:bg-foreground/20 transition-colors" />
+                    </div>
+                  );
+                })}
+
+                {/* New Phase row spacer */}
+                <div className="absolute left-0 right-0 border-b border-border/20" style={{ top: 34 + phases.length * ROW_H, height: ROW_H }} />
               </div>
             </div>
           </div>
-        )}
+        </div>
 
         {/* ── Bottom toolbar ── */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-card">
+        <div className="flex items-center justify-between px-4 py-2.5 border-t border-border bg-card flex-shrink-0">
           <button onClick={scrollToToday} className="notion-button border border-border text-sm">
             Today
           </button>

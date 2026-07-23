@@ -1055,6 +1055,15 @@ html.dark { color-scheme: dark; }
 .top-full {
   top: 100%;
 }
+.-left-0 {
+  left: -0px;
+}
+.-left-0\.5 {
+  left: -0.125rem;
+}
+.-top-px {
+  top: -1px;
+}
 .z-10 {
   z-index: 10;
 }
@@ -2001,6 +2010,12 @@ html.dark { color-scheme: dark; }
 .border-transparent {
   border-color: transparent;
 }
+.border-border\/10 {
+  border-color: hsl(var(--border) / 0.1);
+}
+.border-foreground\/70 {
+  border-color: hsl(var(--foreground) / 0.7);
+}
 .border-l-transparent {
   border-left-color: transparent;
 }
@@ -2149,6 +2164,24 @@ html.dark { color-scheme: dark; }
 .bg-white {
   --tw-bg-opacity: 1;
   background-color: rgb(255 255 255 / var(--tw-bg-opacity));
+}
+.bg-foreground\/30 {
+  background-color: hsl(var(--foreground) / 0.3);
+}
+.bg-foreground\/50 {
+  background-color: hsl(var(--foreground) / 0.5);
+}
+.bg-foreground\/60 {
+  background-color: hsl(var(--foreground) / 0.6);
+}
+.bg-foreground\/\[0\.05\] {
+  background-color: hsl(var(--foreground) / 0.05);
+}
+.bg-muted\/\[0\.04\] {
+  background-color: hsl(var(--muted) / 0.04);
+}
+.bg-muted\/\[0\.08\] {
+  background-color: hsl(var(--muted) / 0.08);
 }
 .bg-gradient-to-br {
   background-image: linear-gradient(to bottom right, var(--tw-gradient-stops));
@@ -2662,6 +2695,16 @@ html.dark { color-scheme: dark; }
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity));
 }
+.text-amber-500 {
+  --tw-text-opacity: 1;
+  color: rgb(245 158 11 / var(--tw-text-opacity));
+}
+.text-foreground\/80 {
+  color: hsl(var(--foreground) / 0.8);
+}
+.text-foreground\/90 {
+  color: hsl(var(--foreground) / 0.9);
+}
 .underline {
   text-decoration-line: underline;
 }
@@ -3156,6 +3199,10 @@ html.dark { color-scheme: dark; }
   background-color: rgb(51 65 85 / var(--tw-bg-opacity));
 }
 
+.hover\:bg-foreground\/20:hover {
+  background-color: hsl(var(--foreground) / 0.2);
+}
+
 .hover\:text-accent-foreground:hover {
   color: hsl(var(--accent-foreground));
 }
@@ -3218,6 +3265,10 @@ html.dark { color-scheme: dark; }
 
 .hover\:ring-foreground\/20:hover {
   --tw-ring-color: hsl(var(--foreground) / 0.2);
+}
+
+.hover\:ring-foreground\/25:hover {
+  --tw-ring-color: hsl(var(--foreground) / 0.25);
 }
 
 .focus\:border-border\/60:focus {
