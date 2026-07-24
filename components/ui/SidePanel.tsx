@@ -12,9 +12,11 @@ interface SidePanelProps {
   footer?: React.ReactNode;
   width?: string;
   headerExtra?: React.ReactNode;
+  /** When true, triggers the exit animation. Parent should call onClose after the animation duration. */
+  closing?: boolean;
 }
 
-export function SidePanel({ title, subtitle, onClose, children, footer, width = 'min(45vw, 820px)', headerExtra }: SidePanelProps) {
+export function SidePanel({ title, subtitle, onClose, children, footer, width = 'min(45vw, 820px)', headerExtra, closing = false }: SidePanelProps) {
   const [visible, setVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
   const visibleRef = useRef<number | null>(null);
@@ -34,6 +36,11 @@ export function SidePanel({ title, subtitle, onClose, children, footer, width = 
       if (visibleRef.current) cancelAnimationFrame(visibleRef.current);
     };
   }, [mounted]);
+
+  // When closing prop flips to true, start exit animation
+  useEffect(() => {
+    if (closing) setVisible(false);
+  }, [closing]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose(); };

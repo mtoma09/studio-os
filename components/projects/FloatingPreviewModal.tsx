@@ -14,9 +14,11 @@ export interface FloatingPreviewModalProps {
   centred?: boolean;
   /** Heading text. Defaults to "Live Preview". */
   heading?: string;
+  /** When true, animates out (slides right / fades) then calls onClose. */
+  closing?: boolean;
 }
 
-export function FloatingPreviewModal({ data, onClose, anchorToLeft = true, centred = false, heading = 'Live Preview' }: FloatingPreviewModalProps) {
+export function FloatingPreviewModal({ data, onClose, anchorToLeft = true, centred = false, heading = 'Live Preview', closing = false }: FloatingPreviewModalProps) {
   const [visible, setVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
   const visibleRef = useRef<number | null>(null);
@@ -25,7 +27,6 @@ export function FloatingPreviewModal({ data, onClose, anchorToLeft = true, centr
 
   useEffect(() => {
     if (!mounted) return;
-    // Delay the modal's entrance so the side panel slides in first.
     const t = setTimeout(() => {
       const r = requestAnimationFrame(() => setVisible(true));
       visibleRef.current = r;
@@ -36,33 +37,33 @@ export function FloatingPreviewModal({ data, onClose, anchorToLeft = true, centr
     };
   }, [mounted]);
 
+  // When closing prop flips to true, trigger exit animation
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') handleClose(); };
+    if (closing) setVisible(false);
+  }, [closing]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  });
-
-  const handleClose = () => {
-    setVisible(false);
-    setTimeout(onClose, 280);
-  };
+  }, [onClose]);
 
   if (!mounted) return null;
+
+  const show = visible && !closing;
 
   // ── Centred mode (for saved invoice preview) ──────────────────────────────
   if (centred) {
     return createPortal(
       <div
-        className={`fixed inset-0 z-[70] flex items-center justify-center p-4 md:p-8 transition-opacity duration-300 print:hidden ${visible ? 'opacity-100' : 'opacity-0'}`}
+        className={`fixed inset-0 z-[70] flex items-center justify-center p-4 md:p-8 transition-opacity duration-300 ${show ? 'opacity-100' : 'opacity-0'}`}
       >
         <div
-          className="absolute inset-0 transition-opacity print:hidden"
+          className="absolute inset-0 transition-opacity"
           style={{ background: 'rgba(220,218,212,0.55)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}
-          onClick={handleClose}
+          onClick={onClose}
         />
-        <div
-          className="relative z-10 w-full max-w-4xl max-h-[90vh] flex flex-col bg-card rounded-2xl shadow-2xl overflow-hidden print:max-w-none print:max-h-none print:rounded-none print:shadow-none print:static print:w-full"
-        >
+        <div className="relative z-10 w-full max-w-4xl h-[90vh] flex flex-col bg-card rounded-2xl shadow-2xl overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3 border-b border-border flex-shrink-0 print:hidden">
             <div>
               <h2 className="font-semibold text-base">{heading}</h2>
@@ -73,10 +74,11 @@ export function FloatingPreviewModal({ data, onClose, anchorToLeft = true, centr
                 <Printer size={15} />
                 Export PDF
               </button>
-              <button onClick={handleClose} className="notion-button border border-border">Close</button>
+              <button onClick={onClose} className="notion-button border border-border">Close</button>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto modal-scroll print:overflow-visible print:max-h-none">
+          {/* InvoicePreview handles its own internal scrolling & A4 scaling */}
+          <div className="flex-1 min-h-0">
             <InvoicePreview data={data} />
           </div>
         </div>
@@ -91,9 +93,9 @@ export function FloatingPreviewModal({ data, onClose, anchorToLeft = true, centr
 
   return createPortal(
     <div
-      className={`fixed top-0 bottom-0 z-50 transition-all duration-300 ease-out print:hidden ${visible ? 'opacity-100' : 'opacity-0'}`}
+      className={`fixed top-0 bottom-0 z-50 transition-all duration-300 ease-out ${show ? 'opacity-100' : 'opacity-0'}`}
       style={{
-        right: visible
+        right: show
           ? (anchorToLeft ? `calc(min(42vw, 640px) + ${gap}px)` : '24px')
           : '-600px',
         width: modalWidth,
@@ -107,7 +109,7 @@ export function FloatingPreviewModal({ data, onClose, anchorToLeft = true, centr
         style={{ width: modalWidth, height: 'min(82vh, 760px)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border flex-shrink-0">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border flex-shrink-0 print:hidden">
           <div className="min-w-0">
             <p className="text-sm font-semibold truncate">{heading}</p>
             <p className="text-[11px] text-muted-foreground truncate">{data.number || 'Invoice'} · {data.clientName || '—'}</p>
@@ -118,7 +120,8 @@ export function FloatingPreviewModal({ data, onClose, anchorToLeft = true, centr
           </button>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto modal-scroll bg-muted/20 print:overflow-visible">
+        {/* InvoicePreview handles its own internal scrolling & A4 scaling */}
+        <div className="flex-1 min-h-0">
           <InvoicePreview data={data} />
         </div>
       </div>

@@ -30,7 +30,11 @@ interface LineItem { id: string; description: string; hours: string; rate: strin
 
 function emptyLine(): LineItem { return { id: `li-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, description: '', hours: '', rate: '' }; }
 function toISODate(d: Date): string { return d.toISOString().slice(0, 10); }
-function lineAmount(l: LineItem): number { return (parseFloat(l.hours) || 0) * (parseFloat(l.rate) || 0); }
+function lineAmount(l: LineItem): number {
+  const h = parseFloat(l.hours) || 0;
+  const r = parseFloat(String(l.rate).replace(/[^0-9.]/g, '')) || 0;
+  return h * r;
+}
 function fmtDate(iso: string): string {
   if (!iso) return '';
   const d = new Date(iso);
@@ -540,13 +544,20 @@ function AddInvoicePanel({ project, clients, onClose, onSave }: AddInvoicePanelP
 
   const canSave = invoiceDate && invoiceNumber && clientName;
 
-  // ── Coordinated close: slide out preview first, then panel ──────────────────
+  // ── Coordinated two-step close: preview slides out first, then panel ────────
   const [closingPreview, setClosingPreview] = useState(false);
+  const [closingPanel, setClosingPanel] = useState(false);
+
   const handleClose = useCallback(() => {
+    // Step 1: slide preview out to the right
     setClosingPreview(true);
+    // Step 2: after preview exits, slide panel out
     setTimeout(() => {
-      setClosingPreview(false);
-      onClose();
+      setClosingPanel(true);
+      // Step 3: after panel exits, unmount everything
+      setTimeout(() => {
+        onClose();
+      }, 300);
     }, 300);
   }, [onClose]);
 
@@ -581,13 +592,12 @@ function AddInvoicePanel({ project, clients, onClose, onSave }: AddInvoicePanelP
 
   return (
     <>
-      {!closingPreview && (
-        <FloatingPreviewModal data={previewData} onClose={handleClose} anchorToLeft heading="Live Preview" />
-      )}
+      <FloatingPreviewModal data={previewData} onClose={handleClose} anchorToLeft heading="Live Preview" closing={closingPreview} />
       <SidePanel
         title="New Invoice"
         subtitle={project.name}
         onClose={handleClose}
+        closing={closingPanel}
         width="min(42vw, 640px)"
         headerExtra={
           <div className="ml-auto pt-0.5">
@@ -695,13 +705,17 @@ function EditInvoicePanel({ invoice, clients, onClose, onSave }: EditInvoicePane
     invoiceDate, dueOnReceipt, dueDate, status, lines, notes, subtotal,
   }), [invoiceNumber, clientName, clientAddress1, clientAddress2, clientAddress3, companyName, companyAddress, companySuburb, abn, accountHolder, bsb, accountNo, bankName, bicSwift, referenceDesc, invoiceDate, dueOnReceipt, dueDate, status, lines, notes, subtotal]);
 
-  // ── Coordinated close: slide out preview first, then panel ──────────────────
+  // ── Coordinated two-step close: preview slides out first, then panel ────────
   const [closingPreview, setClosingPreview] = useState(false);
+  const [closingPanel, setClosingPanel] = useState(false);
+
   const handleClose = useCallback(() => {
     setClosingPreview(true);
     setTimeout(() => {
-      setClosingPreview(false);
-      onClose();
+      setClosingPanel(true);
+      setTimeout(() => {
+        onClose();
+      }, 300);
     }, 300);
   }, [onClose]);
 
@@ -734,13 +748,12 @@ function EditInvoicePanel({ invoice, clients, onClose, onSave }: EditInvoicePane
 
   return (
     <>
-      {!closingPreview && (
-        <FloatingPreviewModal data={previewData} onClose={handleClose} anchorToLeft heading="Live Preview" />
-      )}
+      <FloatingPreviewModal data={previewData} onClose={handleClose} anchorToLeft heading="Live Preview" closing={closingPreview} />
       <SidePanel
         title="Edit Invoice"
         subtitle={invoice.number}
         onClose={handleClose}
+        closing={closingPanel}
         width="min(42vw, 640px)"
         headerExtra={
           <div className="ml-auto pt-0.5">

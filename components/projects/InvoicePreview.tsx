@@ -17,7 +17,9 @@ const MAX_LINES_PER_PAGE = 14;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function lineAmount(hours: string, rate: string): number {
-  return (parseFloat(hours) || 0) * (parseFloat(rate) || 0);
+  const h = parseFloat(hours) || 0;
+  const r = parseFloat(String(rate).replace(/[^0-9.]/g, '')) || 0;
+  return h * r;
 }
 function fmtMoney(n: number): string {
   return `$${n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
