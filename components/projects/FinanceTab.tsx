@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, Plus, Ellipsis as MoreHorizontal, Eye, FileDown, Trash2, Receipt, TrendingUp, FileText, CircleAlert as AlertCircle, Printer, Pencil, ChevronDown, Check, SeparatorHorizontal } from 'lucide-react';
 import { Project, Invoice, InvoiceLineItem, formatBudget } from '@/lib/projects-data';
+import { useCrm } from '@/lib/crm-context';
 import { SidePanel } from '@/components/ui/SidePanel';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { InvoicePreview, InvoicePreviewData, invoiceToPreviewData } from '@/components/projects/InvoicePreview';
@@ -35,6 +36,19 @@ function fmtDate(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// Format hours as 0.00
+function fmtHours(v: string): string {
+  const n = parseFloat(v);
+  if (isNaN(n)) return '';
+  return n.toFixed(2);
+}
+// Format rate as $0.00
+function fmtRate(v: string): string {
+  const n = parseFloat(v);
+  if (isNaN(n)) return '';
+  return `$${n.toFixed(2)}`;
 }
 
 // ── Portal dropdown (escapes overflow-hidden containers) ─────────────────────
@@ -101,9 +115,101 @@ function StatusDropdown({ value, onChange }: { value: Invoice['status']; onChang
   );
 }
 
+// ── Client dropdown ──────────────────────────────────────────────────────────
+interface ClientDropdownProps {
+  value: string;
+  onChange: (clientId: string, clientName: string, address1: string, address2: string, address3: string) => void;
+  clients: { id: string; company: string; primaryContact: string; address: string }[];
+}
+function ClientDropdown({ value, onChange, clients }: ClientDropdownProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    if (!q) return clients;
+    return clients.filter(c => c.company.toLowerCase().includes(q) || c.primaryContact.toLowerCase().includes(q));
+  }, [clients, query]);
+
+  const handleToggle = () => {
+    if (!open && btnRef.current) setRect(btnRef.current.getBoundingClientRect());
+    setOpen(!open);
+  };
+
+  // Parse a client address string into 3 lines
+  const parseAddress = (addr: string): [string, string, string] => {
+    if (!addr) return ['', '', ''];
+    const parts = addr.split(',').map(s => s.trim()).filter(Boolean);
+    if (parts.length >= 3) {
+      return [parts[0], parts[1], parts.slice(2).join(', ')];
+    } else if (parts.length === 2) {
+      return [parts[0], parts[1], ''];
+    } else if (parts.length === 1) {
+      return [parts[0], '', ''];
+    }
+    return [addr, '', ''];
+  };
+
+  return (
+    <div className="relative">
+      <button
+        ref={btnRef}
+        onClick={handleToggle}
+        className="modal-input flex items-center justify-between w-full text-left"
+      >
+        <span className={value ? 'text-foreground' : 'text-muted-foreground'}>{value || 'Select a client...'}</span>
+        <ChevronDown size={15} className="text-muted-foreground flex-shrink-0" />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => { setOpen(false); setQuery(''); }} />
+          <div className="absolute left-0 right-0 mt-1 bg-popover border border-border rounded-xl shadow-lg z-50 py-1 overflow-hidden max-h-64 flex flex-col">
+            <div className="px-2 pb-1.5 flex-shrink-0">
+              <div className="relative">
+                <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder="Search clients..."
+                  className="w-full pl-7 pr-2 h-8 text-sm border border-border rounded-lg bg-background outline-none focus:border-foreground/30"
+                />
+              </div>
+            </div>
+            <div className="overflow-y-auto modal-scroll flex-1">
+              {filtered.length === 0 ? (
+                <p className="px-3 py-3 text-sm text-muted-foreground text-center">No clients found</p>
+              ) : (
+                filtered.map(c => (
+                  <button
+                    key={c.id}
+                    onClick={() => {
+                      const [a1, a2, a3] = parseAddress(c.address);
+                      onChange(c.id, c.company, a1, a2, a3);
+                      setOpen(false);
+                      setQuery('');
+                    }}
+                    className="flex items-center justify-between w-full px-3 py-2 text-sm text-left hover:bg-muted transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground truncate">{c.company}</p>
+                      <p className="text-xs text-muted-foreground truncate">{c.primaryContact}</p>
+                    </div>
+                    {value === c.company && <Check size={14} className="text-muted-foreground flex-shrink-0" />}
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Shared invoice form fields ───────────────────────────────────────────────
-// Renders the full invoice form body. Used by both Add and Edit panels so they
-// stay identical.
 
 interface InvoiceFormFieldsProps {
   invoiceDate: string;
@@ -112,8 +218,12 @@ interface InvoiceFormFieldsProps {
   setInvoiceNumber: (v: string) => void;
   clientName: string;
   setClientName: (v: string) => void;
-  clientAddress: string;
-  setClientAddress: (v: string) => void;
+  clientAddress1: string;
+  setClientAddress1: (v: string) => void;
+  clientAddress2: string;
+  setClientAddress2: (v: string) => void;
+  clientAddress3: string;
+  setClientAddress3: (v: string) => void;
   companyName: string;
   setCompanyName: (v: string) => void;
   companyAddress: string;
@@ -145,12 +255,14 @@ interface InvoiceFormFieldsProps {
   notes: string;
   setNotes: (v: string) => void;
   subtotal: number;
+  clients: { id: string; company: string; primaryContact: string; address: string }[];
 }
 
 function InvoiceFormFields(props: InvoiceFormFieldsProps) {
   const {
     invoiceDate, setInvoiceDate, invoiceNumber, setInvoiceNumber,
-    clientName, setClientName, clientAddress, setClientAddress,
+    clientName, setClientName,
+    clientAddress1, setClientAddress1, clientAddress2, setClientAddress2, clientAddress3, setClientAddress3,
     companyName, setCompanyName, companyAddress, setCompanyAddress, companySuburb, setCompanySuburb,
     abn, setAbn,
     accountHolder, setAccountHolder, bsb, setBsb, accountNo, setAccountNo, bankName, setBankName, bicSwift, setBicSwift,
@@ -160,6 +272,7 @@ function InvoiceFormFields(props: InvoiceFormFieldsProps) {
     lines, setLines,
     notes, setNotes,
     subtotal,
+    clients,
   } = props;
 
   const addLine = () => setLines(prev => [...prev, emptyLine()]);
@@ -167,6 +280,16 @@ function InvoiceFormFields(props: InvoiceFormFieldsProps) {
   const removeLine = (id: string) => setLines(prev => prev.filter(l => l.id !== id));
   const updateLine = (id: string, field: keyof LineItem, value: string) =>
     setLines(prev => prev.map(l => l.id === id ? { ...l, [field]: value } : l));
+
+  // Build combined address string for preview
+  const combinedAddress = [clientAddress1, clientAddress2, clientAddress3].filter(Boolean).join('\n');
+
+  const handleClientSelect = (clientId: string, name: string, a1: string, a2: string, a3: string) => {
+    setClientName(name);
+    setClientAddress1(a1);
+    setClientAddress2(a2);
+    setClientAddress3(a3);
+  };
 
   return (
     <div className="px-6 py-5 space-y-6">
@@ -185,8 +308,12 @@ function InvoiceFormFields(props: InvoiceFormFieldsProps) {
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-semibold text-foreground mb-1.5">Bill To *</label>
-            <input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Client Name" className="modal-input mb-2" />
-            <textarea value={clientAddress} onChange={e => setClientAddress(e.target.value)} placeholder="Client Address&#10;Suburb State Postcode&#10;Country" rows={3} className="modal-input resize-none" />
+            <ClientDropdown value={clientName} onChange={handleClientSelect} clients={clients} />
+            <div className="mt-2 space-y-2">
+              <input value={clientAddress1} onChange={e => setClientAddress1(e.target.value)} placeholder="Address Line 1" className="modal-input" />
+              <input value={clientAddress2} onChange={e => setClientAddress2(e.target.value)} placeholder="Address Line 2" className="modal-input" />
+              <input value={clientAddress3} onChange={e => setClientAddress3(e.target.value)} placeholder="Address Line 3 (Country, State, Code)" className="modal-input" />
+            </div>
           </div>
         </div>
         <div className="space-y-2">
@@ -263,10 +390,24 @@ function InvoiceFormFields(props: InvoiceFormFieldsProps) {
                       <input value={line.description} onChange={e => updateLine(line.id, 'description', e.target.value)} placeholder="Description" className="w-full text-sm outline-none bg-transparent" />
                     </td>
                     <td className="px-3 py-2">
-                      <input type="number" value={line.hours} onChange={e => updateLine(line.id, 'hours', e.target.value)} placeholder="0.00" className="w-full text-sm text-right outline-none bg-transparent" />
+                      <input
+                        type="text"
+                        value={line.hours}
+                        onChange={e => updateLine(line.id, 'hours', e.target.value)}
+                        onBlur={e => updateLine(line.id, 'hours', fmtHours(e.target.value))}
+                        placeholder="0.00"
+                        className="w-full text-sm text-right outline-none bg-transparent"
+                      />
                     </td>
                     <td className="px-3 py-2">
-                      <input type="number" value={line.rate} onChange={e => updateLine(line.id, 'rate', e.target.value)} placeholder="$" className="w-full text-sm text-right outline-none bg-transparent" />
+                      <input
+                        type="text"
+                        value={line.rate}
+                        onChange={e => updateLine(line.id, 'rate', e.target.value)}
+                        onBlur={e => updateLine(line.id, 'rate', fmtRate(e.target.value))}
+                        placeholder="$0.00"
+                        className="w-full text-sm text-right outline-none bg-transparent"
+                      />
                     </td>
                     <td className="px-3 py-2 text-right text-sm">${lineAmount(line).toFixed(2)}</td>
                     <td className="px-2 py-2">
@@ -317,17 +458,18 @@ function InvoiceFormFields(props: InvoiceFormFieldsProps) {
 
 // ── Build live preview data from form state ──────────────────────────────────
 function buildPreviewData(p: {
-  invoiceNumber: string; clientName: string; clientAddress: string;
+  invoiceNumber: string; clientName: string; clientAddress1: string; clientAddress2: string; clientAddress3: string;
   companyName: string; companyAddress: string; companySuburb: string;
   abn: string; accountHolder: string; bsb: string; accountNo: string;
   bankName: string; bicSwift: string; referenceDesc: string;
   invoiceDate: string; dueOnReceipt: boolean; dueDate: string;
   status: Invoice['status']; lines: LineItem[]; notes: string; subtotal: number;
 }): InvoicePreviewData {
+  const combinedAddress = [p.clientAddress1, p.clientAddress2, p.clientAddress3].filter(Boolean).join('\n');
   return {
     number: p.invoiceNumber,
     clientName: p.clientName,
-    clientAddress: p.clientAddress,
+    clientAddress: combinedAddress,
     companyName: p.companyName,
     companyAddress: p.companyAddress,
     companySuburb: p.companySuburb,
@@ -347,18 +489,31 @@ function buildPreviewData(p: {
   };
 }
 
+// ── Parse saved clientAddress (multi-line) back into 3 fields ─────────────────
+function parseSavedAddress(addr: string): [string, string, string] {
+  if (!addr) return ['', '', ''];
+  const lines = addr.split('\n').map(s => s.trim()).filter(Boolean);
+  if (lines.length >= 3) return [lines[0], lines[1], lines.slice(2).join(', ')];
+  if (lines.length === 2) return [lines[0], lines[1], ''];
+  if (lines.length === 1) return [lines[0], '', ''];
+  return [addr, '', ''];
+}
+
 // ── Add Invoice Panel (SidePanel + floating preview) ─────────────────────────
 interface AddInvoicePanelProps {
   project: Project;
+  clients: { id: string; company: string; primaryContact: string; address: string }[];
   onClose: () => void;
   onSave: (inv: Invoice) => void;
 }
 
-function AddInvoicePanel({ project, onClose, onSave }: AddInvoicePanelProps) {
+function AddInvoicePanel({ project, clients, onClose, onSave }: AddInvoicePanelProps) {
   const [invoiceDate, setInvoiceDate] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [clientName, setClientName] = useState('');
-  const [clientAddress, setClientAddress] = useState('');
+  const [clientAddress1, setClientAddress1] = useState('');
+  const [clientAddress2, setClientAddress2] = useState('');
+  const [clientAddress3, setClientAddress3] = useState('');
   const [companyName, setCompanyName] = useState('ergonome studio');
   const [companyAddress, setCompanyAddress] = useState('');
   const [companySuburb, setCompanySuburb] = useState('');
@@ -378,12 +533,24 @@ function AddInvoicePanel({ project, onClose, onSave }: AddInvoicePanelProps) {
   const subtotal = useMemo(() => lines.reduce((s, l) => s + lineAmount(l), 0), [lines]);
 
   const previewData = useMemo(() => buildPreviewData({
-    invoiceNumber, clientName, clientAddress, companyName, companyAddress, companySuburb,
+    invoiceNumber, clientName, clientAddress1, clientAddress2, clientAddress3, companyName, companyAddress, companySuburb,
     abn, accountHolder, bsb, accountNo, bankName, bicSwift, referenceDesc,
     invoiceDate, dueOnReceipt, dueDate, status, lines, notes, subtotal,
-  }), [invoiceNumber, clientName, clientAddress, companyName, companyAddress, companySuburb, abn, accountHolder, bsb, accountNo, bankName, bicSwift, referenceDesc, invoiceDate, dueOnReceipt, dueDate, status, lines, notes, subtotal]);
+  }), [invoiceNumber, clientName, clientAddress1, clientAddress2, clientAddress3, companyName, companyAddress, companySuburb, abn, accountHolder, bsb, accountNo, bankName, bicSwift, referenceDesc, invoiceDate, dueOnReceipt, dueDate, status, lines, notes, subtotal]);
 
   const canSave = invoiceDate && invoiceNumber && clientName;
+
+  // ── Coordinated close: slide out preview first, then panel ──────────────────
+  const [closingPreview, setClosingPreview] = useState(false);
+  const handleClose = useCallback(() => {
+    setClosingPreview(true);
+    setTimeout(() => {
+      setClosingPreview(false);
+      onClose();
+    }, 300);
+  }, [onClose]);
+
+  const combinedAddress = [clientAddress1, clientAddress2, clientAddress3].filter(Boolean).join('\n');
 
   const handleSave = () => {
     if (!canSave) return;
@@ -391,7 +558,7 @@ function AddInvoicePanel({ project, onClose, onSave }: AddInvoicePanelProps) {
       id: `inv-${Date.now()}`,
       number: invoiceNumber,
       clientName,
-      clientAddress,
+      clientAddress: combinedAddress,
       amount: subtotal,
       issuedDate: fmtDate(invoiceDate),
       dueDate: dueOnReceipt ? 'Upon Receipt' : (dueDate ? fmtDate(dueDate) : ''),
@@ -414,11 +581,13 @@ function AddInvoicePanel({ project, onClose, onSave }: AddInvoicePanelProps) {
 
   return (
     <>
-      <FloatingPreviewModal data={previewData} onClose={onClose} anchorToLeft />
+      {!closingPreview && (
+        <FloatingPreviewModal data={previewData} onClose={handleClose} anchorToLeft heading="Live Preview" />
+      )}
       <SidePanel
         title="New Invoice"
         subtitle={project.name}
-        onClose={onClose}
+        onClose={handleClose}
         width="min(42vw, 640px)"
         headerExtra={
           <div className="ml-auto pt-0.5">
@@ -429,7 +598,7 @@ function AddInvoicePanel({ project, onClose, onSave }: AddInvoicePanelProps) {
           <>
             <div />
             <div className="flex gap-2">
-              <button onClick={onClose} className="notion-button border border-border">Cancel</button>
+              <button onClick={handleClose} className="notion-button border border-border">Cancel</button>
               <button onClick={handleSave} disabled={!canSave} className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed">
                 Create Invoice
               </button>
@@ -441,7 +610,9 @@ function AddInvoicePanel({ project, onClose, onSave }: AddInvoicePanelProps) {
           invoiceDate={invoiceDate} setInvoiceDate={setInvoiceDate}
           invoiceNumber={invoiceNumber} setInvoiceNumber={setInvoiceNumber}
           clientName={clientName} setClientName={setClientName}
-          clientAddress={clientAddress} setClientAddress={setClientAddress}
+          clientAddress1={clientAddress1} setClientAddress1={setClientAddress1}
+          clientAddress2={clientAddress2} setClientAddress2={setClientAddress2}
+          clientAddress3={clientAddress3} setClientAddress3={setClientAddress3}
           companyName={companyName} setCompanyName={setCompanyName}
           companyAddress={companyAddress} setCompanyAddress={setCompanyAddress}
           companySuburb={companySuburb} setCompanySuburb={setCompanySuburb}
@@ -458,63 +629,29 @@ function AddInvoicePanel({ project, onClose, onSave }: AddInvoicePanelProps) {
           lines={lines} setLines={setLines}
           notes={notes} setNotes={setNotes}
           subtotal={subtotal}
+          clients={clients}
         />
       </SidePanel>
     </>
   );
 }
 
-// ── Invoice Preview Modal (full-size, for viewing saved invoices) ────────────
-interface InvoicePreviewModalProps {
-  invoice: Invoice;
-  onClose: () => void;
-}
-function InvoicePreviewModal({ invoice, onClose }: InvoicePreviewModalProps) {
-  const handleExportPDF = useCallback(() => {
-    window.print();
-  }, []);
-
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 md:p-8 print:p-0 print:block">
-      <div
-        className="absolute inset-0 transition-opacity print:hidden"
-        style={{ background: 'rgba(220,218,212,0.55)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}
-        onClick={onClose}
-      />
-      <div className="relative z-10 w-full max-w-4xl max-h-[90vh] flex flex-col bg-card rounded-2xl shadow-2xl overflow-hidden print:max-w-none print:max-h-none print:rounded-none print:shadow-none print:static print:w-full">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border flex-shrink-0 print:hidden">
-          <div>
-            <h2 className="font-semibold text-base">{invoice.number}</h2>
-            <p className="text-xs text-muted-foreground">{invoice.clientName}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handleExportPDF} className="btn-primary">
-              <Printer size={15} />
-              Export PDF
-            </button>
-            <button onClick={onClose} className="notion-button border border-border">Close</button>
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto modal-scroll print:overflow-visible print:max-h-none">
-          <InvoicePreview data={invoiceToPreviewData(invoice)} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Edit Invoice Panel (same full form as Add, pre-filled) ───────────────────
 interface EditInvoicePanelProps {
   invoice: Invoice;
+  clients: { id: string; company: string; primaryContact: string; address: string }[];
   onClose: () => void;
   onSave: (inv: Invoice) => void;
 }
 
-function EditInvoicePanel({ invoice, onClose, onSave }: EditInvoicePanelProps) {
+function EditInvoicePanel({ invoice, clients, onClose, onSave }: EditInvoicePanelProps) {
   const [invoiceDate, setInvoiceDate] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState(invoice.number);
   const [clientName, setClientName] = useState(invoice.clientName);
-  const [clientAddress, setClientAddress] = useState(invoice.clientAddress || '');
+  const [parsedAddr] = useState(() => parseSavedAddress(invoice.clientAddress || ''));
+  const [clientAddress1, setClientAddress1] = useState(parsedAddr[0]);
+  const [clientAddress2, setClientAddress2] = useState(parsedAddr[1]);
+  const [clientAddress3, setClientAddress3] = useState(parsedAddr[2]);
   const [companyName, setCompanyName] = useState(invoice.companyName || 'ergonome studio');
   const [companyAddress, setCompanyAddress] = useState(invoice.companyAddress || '');
   const [companySuburb, setCompanySuburb] = useState(invoice.companySuburb || '');
@@ -535,7 +672,6 @@ function EditInvoicePanel({ invoice, onClose, onSave }: EditInvoicePanelProps) {
   );
   const [notes, setNotes] = useState(invoice.notes || '');
 
-  // Parse the saved issued/due dates back into ISO format for the date pickers.
   useEffect(() => {
     if (invoice.issuedDate) {
       const d = new Date(invoice.issuedDate);
@@ -554,17 +690,29 @@ function EditInvoicePanel({ invoice, onClose, onSave }: EditInvoicePanelProps) {
   const subtotal = useMemo(() => lines.reduce((s, l) => s + lineAmount(l), 0), [lines]);
 
   const previewData = useMemo(() => buildPreviewData({
-    invoiceNumber, clientName, clientAddress, companyName, companyAddress, companySuburb,
+    invoiceNumber, clientName, clientAddress1, clientAddress2, clientAddress3, companyName, companyAddress, companySuburb,
     abn, accountHolder, bsb, accountNo, bankName, bicSwift, referenceDesc,
     invoiceDate, dueOnReceipt, dueDate, status, lines, notes, subtotal,
-  }), [invoiceNumber, clientName, clientAddress, companyName, companyAddress, companySuburb, abn, accountHolder, bsb, accountNo, bankName, bicSwift, referenceDesc, invoiceDate, dueOnReceipt, dueDate, status, lines, notes, subtotal]);
+  }), [invoiceNumber, clientName, clientAddress1, clientAddress2, clientAddress3, companyName, companyAddress, companySuburb, abn, accountHolder, bsb, accountNo, bankName, bicSwift, referenceDesc, invoiceDate, dueOnReceipt, dueDate, status, lines, notes, subtotal]);
+
+  // ── Coordinated close: slide out preview first, then panel ──────────────────
+  const [closingPreview, setClosingPreview] = useState(false);
+  const handleClose = useCallback(() => {
+    setClosingPreview(true);
+    setTimeout(() => {
+      setClosingPreview(false);
+      onClose();
+    }, 300);
+  }, [onClose]);
+
+  const combinedAddress = [clientAddress1, clientAddress2, clientAddress3].filter(Boolean).join('\n');
 
   const handleSave = () => {
     onSave({
       ...invoice,
       number: invoiceNumber,
       clientName,
-      clientAddress,
+      clientAddress: combinedAddress,
       amount: subtotal,
       issuedDate: invoiceDate ? fmtDate(invoiceDate) : invoice.issuedDate,
       dueDate: dueOnReceipt ? 'Upon Receipt' : (dueDate ? fmtDate(dueDate) : invoice.dueDate),
@@ -586,11 +734,13 @@ function EditInvoicePanel({ invoice, onClose, onSave }: EditInvoicePanelProps) {
 
   return (
     <>
-      <FloatingPreviewModal data={previewData} onClose={onClose} anchorToLeft />
+      {!closingPreview && (
+        <FloatingPreviewModal data={previewData} onClose={handleClose} anchorToLeft heading="Live Preview" />
+      )}
       <SidePanel
         title="Edit Invoice"
         subtitle={invoice.number}
-        onClose={onClose}
+        onClose={handleClose}
         width="min(42vw, 640px)"
         headerExtra={
           <div className="ml-auto pt-0.5">
@@ -601,7 +751,7 @@ function EditInvoicePanel({ invoice, onClose, onSave }: EditInvoicePanelProps) {
           <>
             <div />
             <div className="flex gap-2">
-              <button onClick={onClose} className="notion-button border border-border">Cancel</button>
+              <button onClick={handleClose} className="notion-button border border-border">Cancel</button>
               <button onClick={handleSave} className="btn-primary">Save Changes</button>
             </div>
           </>
@@ -611,7 +761,9 @@ function EditInvoicePanel({ invoice, onClose, onSave }: EditInvoicePanelProps) {
           invoiceDate={invoiceDate} setInvoiceDate={setInvoiceDate}
           invoiceNumber={invoiceNumber} setInvoiceNumber={setInvoiceNumber}
           clientName={clientName} setClientName={setClientName}
-          clientAddress={clientAddress} setClientAddress={setClientAddress}
+          clientAddress1={clientAddress1} setClientAddress1={setClientAddress1}
+          clientAddress2={clientAddress2} setClientAddress2={setClientAddress2}
+          clientAddress3={clientAddress3} setClientAddress3={setClientAddress3}
           companyName={companyName} setCompanyName={setCompanyName}
           companyAddress={companyAddress} setCompanyAddress={setCompanyAddress}
           companySuburb={companySuburb} setCompanySuburb={setCompanySuburb}
@@ -628,6 +780,7 @@ function EditInvoicePanel({ invoice, onClose, onSave }: EditInvoicePanelProps) {
           lines={lines} setLines={setLines}
           notes={notes} setNotes={setNotes}
           subtotal={subtotal}
+          clients={clients}
         />
       </SidePanel>
     </>
@@ -686,12 +839,21 @@ function InvoiceRowMenu({ invoice, onDetails, onPreview, onExport, onDelete }: I
 
 // ── Main FinanceTab ──────────────────────────────────────────────────────────
 export function FinanceTab({ project, onUpdateInvoices }: FinanceTabProps) {
+  const { clients } = useCrm();
   const [activeFilter, setActiveFilter] = useState<InvoiceFilter>('Issued');
   const [search, setSearch] = useState('');
   const [showAddPanel, setShowAddPanel] = useState(false);
   const [editInvoice, setEditInvoice] = useState<Invoice | null>(null);
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>(project.invoices || []);
+
+  // Map CRM clients to a simplified shape for the dropdown
+  const clientOptions = useMemo(() => clients.map(c => ({
+    id: c.id,
+    company: c.company,
+    primaryContact: c.primaryContact,
+    address: c.address,
+  })), [clients]);
 
   const totalEarnings = useMemo(() => invoices.filter(i => i.status === 'Paid').reduce((s, i) => s + i.amount, 0), [invoices]);
   const paidCount = useMemo(() => invoices.filter(i => i.status === 'Paid').length, [invoices]);
@@ -738,13 +900,18 @@ export function FinanceTab({ project, onUpdateInvoices }: FinanceTabProps) {
   return (
     <div className="space-y-5">
       {showAddPanel && (
-        <AddInvoicePanel project={project} onClose={() => setShowAddPanel(false)} onSave={handleAddInvoice} />
+        <AddInvoicePanel project={project} clients={clientOptions} onClose={() => setShowAddPanel(false)} onSave={handleAddInvoice} />
       )}
       {editInvoice && (
-        <EditInvoicePanel invoice={editInvoice} onClose={() => setEditInvoice(null)} onSave={handleSaveEdit} />
+        <EditInvoicePanel invoice={editInvoice} clients={clientOptions} onClose={() => setEditInvoice(null)} onSave={handleSaveEdit} />
       )}
       {previewInvoice && (
-        <InvoicePreviewModal invoice={previewInvoice} onClose={() => setPreviewInvoice(null)} />
+        <FloatingPreviewModal
+          data={invoiceToPreviewData(previewInvoice)}
+          onClose={() => setPreviewInvoice(null)}
+          centred
+          heading="Preview"
+        />
       )}
 
       {/* Top 3 KPI cards */}

@@ -10,9 +10,13 @@ export interface FloatingPreviewModalProps {
   onClose: () => void;
   /** When true, the modal is offset to the left of a right-anchored side panel. */
   anchorToLeft?: boolean;
+  /** When true, modal is centred on screen (used for saved invoice preview). */
+  centred?: boolean;
+  /** Heading text. Defaults to "Live Preview". */
+  heading?: string;
 }
 
-export function FloatingPreviewModal({ data, onClose, anchorToLeft = true }: FloatingPreviewModalProps) {
+export function FloatingPreviewModal({ data, onClose, anchorToLeft = true, centred = false, heading = 'Live Preview' }: FloatingPreviewModalProps) {
   const [visible, setVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
   const visibleRef = useRef<number | null>(null);
@@ -45,6 +49,43 @@ export function FloatingPreviewModal({ data, onClose, anchorToLeft = true }: Flo
 
   if (!mounted) return null;
 
+  // ── Centred mode (for saved invoice preview) ──────────────────────────────
+  if (centred) {
+    return createPortal(
+      <div
+        className={`fixed inset-0 z-[70] flex items-center justify-center p-4 md:p-8 transition-opacity duration-300 print:hidden ${visible ? 'opacity-100' : 'opacity-0'}`}
+      >
+        <div
+          className="absolute inset-0 transition-opacity print:hidden"
+          style={{ background: 'rgba(220,218,212,0.55)', backdropFilter: 'blur(2px)', WebkitBackdropFilter: 'blur(2px)' }}
+          onClick={handleClose}
+        />
+        <div
+          className="relative z-10 w-full max-w-4xl max-h-[90vh] flex flex-col bg-card rounded-2xl shadow-2xl overflow-hidden print:max-w-none print:max-h-none print:rounded-none print:shadow-none print:static print:w-full"
+        >
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border flex-shrink-0 print:hidden">
+            <div>
+              <h2 className="font-semibold text-base">{heading}</h2>
+              <p className="text-xs text-muted-foreground">{data.number || 'Invoice'} · {data.clientName || '—'}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => window.print()} className="btn-primary">
+                <Printer size={15} />
+                Export PDF
+              </button>
+              <button onClick={handleClose} className="notion-button border border-border">Close</button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto modal-scroll print:overflow-visible print:max-h-none">
+            <InvoicePreview data={data} />
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
+  }
+
+  // ── Anchored mode (live preview beside side panel) ─────────────────────────
   const modalWidth = 560;
   const gap = 24;
 
@@ -68,7 +109,7 @@ export function FloatingPreviewModal({ data, onClose, anchorToLeft = true }: Flo
       >
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-border flex-shrink-0">
           <div className="min-w-0">
-            <p className="text-sm font-semibold truncate">Live Preview</p>
+            <p className="text-sm font-semibold truncate">{heading}</p>
             <p className="text-[11px] text-muted-foreground truncate">{data.number || 'Invoice'} · {data.clientName || '—'}</p>
           </div>
           <button onClick={() => window.print()} className="btn-primary text-xs px-3 py-1.5">
